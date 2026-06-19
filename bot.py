@@ -603,7 +603,6 @@ def get_wallet_keyboard():
     keyboard.add(KeyboardButton("💸 واریز 📤"), KeyboardButton("💳 برداشت 📥"))
     keyboard.add(KeyboardButton("↩️ بازگشت 🏠"))
     return keyboard
-
 def get_admin_keyboard():
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     keyboard.add(
@@ -623,7 +622,8 @@ def get_admin_keyboard():
         KeyboardButton("💰 مدیریت سود 💰")
     )
     keyboard.add(
-        KeyboardButton("🎫 تیکت‌ها 🎫")
+        KeyboardButton("🎫 تیکت‌ها 🎫"),
+        KeyboardButton("📢 پیام همگانی 📢")  # <---- این خط رو اضافه کن
     )
     return keyboard
 
@@ -2611,7 +2611,132 @@ def back_to_admin(message):
         parse_mode="HTML", 
         reply_markup=get_admin_keyboard()
     )
+@bot.message_handler(func=lambda message: message.text == "📢 پیام همگانی 📢")
+def broadcast_handler(message):
+    if not is_admin(message.from_user.id):
+        bot.send_message(message.from_user.id, msg_fancy("🚫 دسترسی غیرمجاز!"), parse_mode="HTML")
+        return
+    
+    bot.send_message(
+        message.from_user.id, 
+        msg_fancy("📝 **پیام خود را بنویسید:**\n\n⚠️ این پیام برای **همه کاربران** ارسال میشه!"), 
+        parse_mode="HTML"
+    )
+    bot.register_next_step_handler(message, send_broadcast)
+    def send_broadcast(message):
+    admin_id = str(message.from_user.id)
+    broadcast_text = message.text
+    
+    # گرفتن لیست همه کاربران
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT user_id FROM users')
+    users = c.fetchall()
+    conn.close()
+    
+    if not users:
+        bot.send_message(admin_id, msg_fancy("📭 هیچ کاربری در دیتابیس وجود ندارد!"), parse_mode="HTML")
+        return
+    
+    # دکمه‌های تایید
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        InlineKeyboardButton("✅ بله، ارسال کن", callback_data=f"confirm_broadcast_{admin_id}"),
+        InlineKeyboardButton("❌ لغو", callback_data="cancel_broadcast")
+    )
+    
+    # نمایش پیش‌نمایش
+    preview_text = f"""📢 **پیش‌نمایش پیام همگانی:**
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{broadcast_text}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+👥 **تعداد گیرندگان:** {len(users)} نفر
+
+⚠️ آیا مطمئنی؟"""
+    
+    bot.send_message(
+        admin_id, 
+        msg_fancy(preview_text), 
+        parse_mode="HTML", 
+        reply_markup=markup
+    )
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("confirm_broadcast_"))
+def confirm_broadcast(call):
+    admin_id = call.data.split("_")[2]
+    
+    if str(call.from_user.id) != admin_id:
+        bot.answer_callback_query(call.id, "🚫 این دکمه برای شما نیست!")
+        return
+    
+    bot.edit_message_text(
+        msg_fancy("⏳ **در حال ارسال پیام همگانی...**\n\nلطفاً صبر کنید..."), 
+        call.from_user.id, 
+        call.message.message_id, 
+        parse_mode="HTML"
+    )
+    
+    # گرفتن لیست کاربران
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT user_id FROM users')
+    users = c.fetchall()
+    conn.close()
+    
+    # استخراج متن پیام از پیام قبلی
+    full_text = call.message.text
+    parts = full_text.split("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    if len(parts) >= 3:
+        broadcast_text = parts[1].strip()
+    else:
+        broadcast_text = "پیام همگانی"
+    
+    success_count = 0
+    fail_count = 0
+    
+    # ارسال به همه کاربران
+    for user in users:
+        user_id = user[0]
+        try:
+            bot.send_message(user_id, msg_fancy(f"📢 **پیام همگانی از ادمین:**\n\n{broadcast_text}"), parse_mode="HTML")
+            success_count += 1
+        except:
+            fail_count += 1
+        
+        # برای جلوگیری از محدودیت تلگرام، کمی تاخیر
+        time.sleep(0.05)
+    
+    # گزارش نهایی
+    result_text = f"""📊 **گزارش ارسال پیام همگانی:**
+
+✅ **موفق:** {success_count} نفر
+❌ **ناموفق:** {fail_count} نفر
+👥 **کل کاربران:** {len(users)} نفر
+
+📝 **متن پیام:**
+{broadcast_text[:100]}{'...' if len(broadcast_text) > 100 else ''}"""
+    
+    bot.edit_message_text(
+        msg_fancy(result_text), 
+        call.from_user.id, 
+        call.message.message_id, 
+        parse_mode="HTML"
+    )
+    
+    bot.answer_callback_query(call.id, "✅ پیام همگانی ارسال شد!")
+
+@bot.callback_query_handler(func=lambda call: call.data == "cancel_broadcast")
+def cancel_broadcast(call):
+    bot.edit_message_text(
+        msg_fancy("❌ **ارسال پیام همگانی لغو شد!**"), 
+        call.from_user.id, 
+        call.message.message_id, 
+        parse_mode="HTML"
+    )
+    bot.answer_callback_query(call.id, "❌ لغو شد!")
 # ==================== اجرا ====================
 if __name__ == "__main__":
     print("""
