@@ -9,7 +9,7 @@ import sqlite3
 import re
 
 # ==================== تنظیمات اولیه ====================
-BOT_TOKEN = '8502993089:AAHoMJMY1u8uHQwaoeRg0Ye1FiBgj7PrXDg'
+BOT_TOKEN = '8647710024:AAHoM2B-DxMWD9PI3y3jfS-IcnvYcUM2yX8'
 bot = telebot.TeleBot(BOT_TOKEN)
 BOT_USERNAME = 'lotto_ir_bot'
 MAIN_ADMIN_ID = '7281938958'
