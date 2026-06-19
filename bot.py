@@ -2623,11 +2623,10 @@ def broadcast_handler(message):
         parse_mode="HTML"
     )
     bot.register_next_step_handler(message, send_broadcast)
-    def send_broadcast(message):
+def send_broadcast(message):
     admin_id = str(message.from_user.id)
     broadcast_text = message.text
     
-    # گرفتن لیست همه کاربران
     conn = get_db()
     c = conn.cursor()
     c.execute('SELECT user_id FROM users')
@@ -2638,14 +2637,14 @@ def broadcast_handler(message):
         bot.send_message(admin_id, msg_fancy("📭 هیچ کاربری در دیتابیس وجود ندارد!"), parse_mode="HTML")
         return
     
-    # دکمه‌های تایید
+    pending_broadcasts[admin_id] = broadcast_text
+    
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
         InlineKeyboardButton("✅ بله، ارسال کن", callback_data=f"confirm_broadcast_{admin_id}"),
         InlineKeyboardButton("❌ لغو", callback_data="cancel_broadcast")
     )
     
-    # نمایش پیش‌نمایش
     preview_text = f"""📢 **پیش‌نمایش پیام همگانی:**
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2663,7 +2662,7 @@ def broadcast_handler(message):
         msg_fancy(preview_text), 
         parse_mode="HTML", 
         reply_markup=markup
-    )
+    )    
     @bot.callback_query_handler(func=lambda call: call.data.startswith("confirm_broadcast_"))
 def confirm_broadcast(call):
     admin_id = call.data.split("_")[2]
