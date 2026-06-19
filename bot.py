@@ -706,7 +706,7 @@ pending_withdrawal_requests = {}
 support_chats = {}
 rps_waiting = {}
 rps_games = {}
-
+pending_broadcasts = {} 
 # ==================== هندلر استارت ====================
 @bot.message_handler(commands=['start'])
 def start_handler(message):
