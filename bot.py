@@ -2611,6 +2611,8 @@ def back_to_admin(message):
         parse_mode="HTML", 
         reply_markup=get_admin_keyboard()
     )
+
+# ==================== پیام همگانی ====================
 @bot.message_handler(func=lambda message: message.text == "📢 پیام همگانی 📢")
 def broadcast_handler(message):
     if not is_admin(message.from_user.id):
@@ -2623,6 +2625,7 @@ def broadcast_handler(message):
         parse_mode="HTML"
     )
     bot.register_next_step_handler(message, send_broadcast)
+
 def send_broadcast(message):
     admin_id = str(message.from_user.id)
     broadcast_text = message.text
@@ -2662,14 +2665,19 @@ def send_broadcast(message):
         msg_fancy(preview_text), 
         parse_mode="HTML", 
         reply_markup=markup
-    )    
-    @bot.callback_query_handler(func=lambda call: call.data.startswith("confirm_broadcast_"))
+    )
+
+# ==================== Callback های پیام همگانی ====================
+@bot.callback_query_handler(func=lambda call: call.data.startswith("confirm_broadcast_"))
 def confirm_broadcast(call):
     admin_id = call.data.split("_")[2]
     
     if str(call.from_user.id) != admin_id:
         bot.answer_callback_query(call.id, "🚫 این دکمه برای شما نیست!")
         return
+    
+    # گرفتن متن پیام از دیکشنری موقت
+    broadcast_text = pending_broadcasts.get(admin_id, "پیام همگانی")
     
     bot.edit_message_text(
         msg_fancy("⏳ **در حال ارسال پیام همگانی...**\n\nلطفاً صبر کنید..."), 
@@ -2685,14 +2693,6 @@ def confirm_broadcast(call):
     users = c.fetchall()
     conn.close()
     
-    # استخراج متن پیام از پیام قبلی
-    full_text = call.message.text
-    parts = full_text.split("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    if len(parts) >= 3:
-        broadcast_text = parts[1].strip()
-    else:
-        broadcast_text = "پیام همگانی"
-    
     success_count = 0
     fail_count = 0
     
@@ -2707,6 +2707,10 @@ def confirm_broadcast(call):
         
         # برای جلوگیری از محدودیت تلگرام، کمی تاخیر
         time.sleep(0.05)
+    
+    # حذف از دیکشنری موقت
+    if admin_id in pending_broadcasts:
+        del pending_broadcasts[admin_id]
     
     # گزارش نهایی
     result_text = f"""📊 **گزارش ارسال پیام همگانی:**
@@ -2729,6 +2733,11 @@ def confirm_broadcast(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == "cancel_broadcast")
 def cancel_broadcast(call):
+    # حذف از دیکشنری موقت
+    admin_id = str(call.from_user.id)
+    if admin_id in pending_broadcasts:
+        del pending_broadcasts[admin_id]
+    
     bot.edit_message_text(
         msg_fancy("❌ **ارسال پیام همگانی لغو شد!**"), 
         call.from_user.id, 
