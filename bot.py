@@ -146,6 +146,22 @@ def init_db():
             reward INTEGER
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS welcome_bonus (
+            user_id TEXT PRIMARY KEY,
+            received INTEGER DEFAULT 0,
+            join_order INTEGER
+        )
+    ''')
+    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS bonus_stats (
+            key TEXT PRIMARY KEY,
+            value INTEGER DEFAULT 0
+        )
+    ''')
+    
+    c.execute('INSERT OR IGNORE INTO bonus_stats (key, value) VALUES (?, ?)', ('total_bonus_given', 0))
     
     levels = [
         (1, "🌱 تازه‌کار", 0, 0),
@@ -280,7 +296,60 @@ def get_leaderboard():
     r = c.fetchall()
     conn.close()
     return r
+# ==================== هدیه ورود (۱۰۰ نفر اول) ====================
+WELCOME_BONUS_AMOUNT = 30000
+MAX_BONUS_USERS = 100
 
+def get_total_bonus_given():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT value FROM bonus_stats WHERE key = "total_bonus_given"')
+    r = c.fetchone()
+    conn.close()
+    return r[0] if r else 0
+
+def increase_bonus_count():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('UPDATE bonus_stats SET value = value + 1 WHERE key = "total_bonus_given"')
+    conn.commit()
+    conn.close()
+
+def has_received_welcome_bonus(user_id):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT received FROM welcome_bonus WHERE user_id = ?', (str(user_id),))
+    r = c.fetchone()
+    conn.close()
+    return r and r[0] == 1
+
+def set_welcome_bonus_received(user_id):
+    total_given = get_total_bonus_given()
+    join_order = total_given + 1
+    
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('INSERT OR REPLACE INTO welcome_bonus (user_id, received, join_order) VALUES (?, 1, ?)', (str(user_id), join_order))
+    conn.commit()
+    conn.close()
+    increase_bonus_count()
+
+def get_remaining_bonus_slots():
+    total_given = get_total_bonus_given()
+    remaining = MAX_BONUS_USERS - total_given
+    return remaining if remaining > 0 else 0
+
+def give_welcome_bonus(user_id):
+    if has_received_welcome_bonus(user_id):
+        return False, None
+    
+    remaining = get_remaining_bonus_slots()
+    if remaining <= 0:
+        return False, None
+    
+    update_wallet(user_id, WELCOME_BONUS_AMOUNT)
+    set_welcome_bonus_received(user_id)
+    return True, remaining - 1
 def get_level_title(level):
     conn = get_db()
     c = conn.cursor()
@@ -717,6 +786,19 @@ def start_handler(message):
     if not get_invite_code(user_id):
         create_invite(user_id)
     
+    # ========== بخش هدیه ورود (۱۰۰ نفر اول) ==========
+    welcome_text = ""
+    bonus_given, remaining = give_welcome_bonus(user_id)
+    
+    if bonus_given:
+        welcome_text = f"\n\n🎁 **هدیه ویژه ورود:** {WELCOME_BONUS_AMOUNT:,} تومان به کیف پولت اضافه شد! 🎉\n\n📊 **جای مونده:** {remaining} نفر از ۱۰۰ نفر"
+    else:
+        if has_received_welcome_bonus(user_id):
+            pass
+        else:
+            welcome_text = "\n\n😔 **متاسفیم!** هدیه ۱۰۰ نفر اول به پایان رسیده."
+    # ==========================================
+    
     args = message.text.split()
     if len(args) > 1:
         invite_code = args[1]
@@ -739,17 +821,25 @@ def start_handler(message):
                 add_invited(inviter_id)
                 invited_count = get_invited_count(inviter_id)
                 
-                bot.send_message(user_id, msg_fancy("🎉 خوش اومدی! با لینک دعوت وارد شدی! 🎉"), parse_mode="HTML")
+                bot.send_message(user_id, msg_fancy(f"🎉 خوش اومدی! با لینک دعوت وارد شدی!{welcome_text}"), parse_mode="HTML")
                 bot.send_message(inviter_id, msg_fancy(f"👥 یه نفر با لینک دعوتت وارد شد! تعداد: {invited_count}/20 🌟"), parse_mode="HTML")
                 
                 if invited_count >= 20 and not is_rewarded(inviter_id):
                     update_wallet(inviter_id, 50000)
                     set_rewarded(inviter_id)
                     bot.send_message(inviter_id, msg_fancy("🎁 تبریک! ۵۰,۰۰۰ تومان جایزه دعوت به کیف پولت اضافه شد! 🎁"), parse_mode="HTML")
+                
+                bot.send_message(
+                    user_id, 
+                    msg_fancy(f"✨ به سلطان لوتو خوش اومدی! ✨\n💰 رویاهایت رو به واقعیت تبدیل کن! 💰{welcome_text}"), 
+                    parse_mode="HTML", 
+                    reply_markup=get_main_keyboard()
+                )
+                return
     
     bot.send_message(
         user_id, 
-        msg_fancy("✨ به سلطان لوتو خوش اومدی! ✨\n💰 رویاهایت رو به واقعیت تبدیل کن! 💰"), 
+        msg_fancy(f"✨ به سلطان لوتو خوش اومدی! ✨\n💰 رویاهایت رو به واقعیت تبدیل کن! 💰{welcome_text}"), 
         parse_mode="HTML", 
         reply_markup=get_main_keyboard()
     )
