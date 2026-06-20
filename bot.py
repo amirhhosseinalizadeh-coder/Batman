@@ -582,11 +582,10 @@ def get_main_keyboard():
         KeyboardButton("👥 دعوت از دوستان 🎁")
     )
     keyboard.add(
-        KeyboardButton("🏆 تالار مشاهیر 🏅"),
-        KeyboardButton("⭐ سطح من 🌟")
+        KeyboardButton("💼 کیف پول 💰")
     )
     keyboard.add(
-        KeyboardButton("💼 کیف پول 💰"),
+        KeyboardButton("⭐ سطح من 🌟"),
         KeyboardButton("ℹ️ درباره ما 📖")
     )
     keyboard.add(
