@@ -1044,38 +1044,40 @@ def run_game(game_id):
             is_bot_winner = winner_data.get("is_bot", False)
             
             real_players = [pid for pid, pdata in game["players"].items() if not pdata.get("is_bot", False)]
-            total_real_money = len(real_players) * room["amount"]
             
-            # ==========================================
-            # اگر برنده ربات باشه - کل پول کاربرا به سود ادمین
+            # محاسبه کل پات (همه بازیکنان)
+            total_players = len(game["players"])
+            total_pot = total_players * room["amount"]
+            
+            # پولی که کاربران واقعی پرداخت کرده‌اند
+            real_players_money = len(real_players) * room["amount"]
+            
             if is_bot_winner:
-                if total_real_money > 0:
+                # ربات برنده شده - کل پول کاربران واقعی به سود ادمین می‌رود
+                if real_players_money > 0:
                     conn = get_db()
                     c = conn.cursor()
                     c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
-                             (datetime.datetime.now().date().isoformat(), total_real_money))
+                             (datetime.datetime.now().date().isoformat(), real_players_money))
                     conn.commit()
                     conn.close()
-                    update_shift_stats(profits=total_real_money)
+                    update_shift_stats(profits=real_players_money)
                 
                 for pid in real_players:
                     try:
                         bot.send_message(
                             pid, 
-                            msg_fancy(f"😞 بازی تموم شد! برنده: {winner_name}\n💰 جایزه: {total_real_money:,} تومان\n🍀 دفعه بعد شانس توئه!"), 
+                            msg_fancy(f"😞 بازی تموم شد! برنده: {winner_name}\n💰 جایزه: {total_pot:,} تومان\n🍀 دفعه بعد شانس توئه!"), 
                             parse_mode="HTML"
                         )
                     except:
                         pass
             
-            # ==========================================
-            # اگر برنده کاربر واقعی باشه
             else:
-                admin_cut = int(total_real_money * 0.3)
-                user_prize = total_real_money - admin_cut
-                
-                update_wallet(winner_id, user_prize)
-                update_earnings(winner_id, user_prize)
+                # کاربر برنده شده - کل پات (پول همه بازیکنان شامل ربات‌ها) به کاربر می‌رسد
+                # اینطوری کاربر ضرر نمی‌کند و پول ربات هم به حسابش می‌رود
+                update_wallet(winner_id, total_pot)
+                update_earnings(winner_id, total_pot)
                 update_stats(winner_id, games=1, wins=1)
                 
                 for pid in real_players:
@@ -1084,16 +1086,7 @@ def run_game(game_id):
                 
                 leveled, new_level, level_title, reward = add_xp(winner_id, room["xp"])
                 
-                if admin_cut > 0:
-                    conn = get_db()
-                    c = conn.cursor()
-                    c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
-                             (datetime.datetime.now().date().isoformat(), admin_cut))
-                    conn.commit()
-                    conn.close()
-                    update_shift_stats(profits=admin_cut)
-                
-                winner_msg = f"🏆 **تبریک! برنده شدی!** 🏆\n\n👑 {winner_name} 👑\n\n💰 **جایزه:** {user_prize:,} تومان\n✨ **XP کسب شده:** {room['xp']}"
+                winner_msg = f"🏆 **تبریک! برنده شدی!** 🏆\n\n👑 {winner_name} 👑\n\n💰 **جایزه:** {total_pot:,} تومان\n✨ **XP کسب شده:** {room['xp']}"
                 
                 if leveled:
                     winner_msg += f"\n\n🌟 به سطح **{level_title}** رسیدی! {reward:,} تومان پاداش 🌟"
@@ -1110,7 +1103,7 @@ def run_game(game_id):
                         try:
                             bot.send_message(
                                 pid, 
-                                msg_fancy(f"😞 بازی تموم شد! برنده: {winner_name}\n💰 جایزه: {user_prize:,} تومان\n🍀 دفعه بعد شانس توئه!"), 
+                                msg_fancy(f"😞 بازی تموم شد! برنده: {winner_name}\n💰 جایزه: {total_pot:,} تومان\n🍀 دفعه بعد شانس توئه!"), 
                                 parse_mode="HTML"
                             )
                         except:
@@ -1395,38 +1388,39 @@ def run_rps_game(game_id):
             result_text = f"🏆 برنده: {game['players'][p2]['name']}!"
         
         real_players = [pid for pid, pdata in game["players"].items() if not pdata.get("is_bot", False)]
-        total_real_money = len(real_players) * game["amount"]
         
-        # ==========================================
-        # اگه برنده ربات باشه - کل پول کاربرا به سود ادمین
+        # محاسبه کل پات (همه بازیکنان)
+        total_players = len(game["players"])
+        total_pot = total_players * game["amount"]
+        
+        # پولی که کاربران واقعی پرداخت کرده‌اند
+        real_players_money = len(real_players) * game["amount"]
+        
         if is_bot_winner and winner_id:
-            if total_real_money > 0:
+            # ربات برنده شده - کل پول کاربران واقعی به سود ادمین می‌رود
+            if real_players_money > 0:
                 conn = get_db()
                 c = conn.cursor()
                 c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
-                         (datetime.datetime.now().date().isoformat(), total_real_money))
+                         (datetime.datetime.now().date().isoformat(), real_players_money))
                 conn.commit()
                 conn.close()
-                update_shift_stats(profits=total_real_money)
+                update_shift_stats(profits=real_players_money)
             
             for pid in real_players:
                 try:
                     bot.send_message(
                         pid,
-                        msg_fancy(f"😞 بازی تموم شد! برنده: {game['players'][winner_id]['name']}\n💰 جایزه: {total_real_money:,} تومان\n🍀 دفعه بعد شانس توئه!"),
+                        msg_fancy(f"😞 بازی تموم شد! برنده: {game['players'][winner_id]['name']}\n💰 جایزه: {total_pot:,} تومان\n🍀 دفعه بعد شانس توئه!"),
                         parse_mode="HTML"
                     )
                 except:
                     pass
         
-        # ==========================================
-        # اگه برنده کاربر واقعی باشه
         elif winner_id and not is_bot_winner:
-            admin_cut = int(total_real_money * (RPS_ADMIN_PERCENT / 100))
-            user_prize = total_real_money - admin_cut
-            
-            update_wallet(winner_id, user_prize)
-            update_earnings(winner_id, user_prize)
+            # کاربر برنده شده - کل پات (پول همه بازیکنان شامل ربات‌ها) به کاربر می‌رسد
+            update_wallet(winner_id, total_pot)
+            update_earnings(winner_id, total_pot)
             update_stats(winner_id, games=1, wins=1)
             
             for pid in real_players:
@@ -1434,15 +1428,6 @@ def run_rps_game(game_id):
                     update_stats(pid, games=1, losses=1)
             
             add_xp(winner_id, game["xp_reward"])
-            
-            if admin_cut > 0:
-                conn = get_db()
-                c = conn.cursor()
-                c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
-                         (datetime.datetime.now().date().isoformat(), admin_cut))
-                conn.commit()
-                conn.close()
-                update_shift_stats(profits=admin_cut)
         
         # ارسال نتیجه به کاربرا
         for pid in game["players"]:
@@ -1459,7 +1444,7 @@ def run_rps_game(game_id):
 {result_text}"""
                 
                 if winner_id == pid and not is_bot_winner:
-                    result_msg += f"\n\n🎉 تبریک! {user_prize:,} تومان بردی! 🎉"
+                    result_msg += f"\n\n🎉 تبریک! {total_pot:,} تومان بردی! 🎉"
                 elif is_bot_winner:
                     result_msg += "\n\n😞 دفعه بعد شانس توئه! 🍀"
                 elif winner_id:
