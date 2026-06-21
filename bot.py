@@ -1053,7 +1053,7 @@ def run_game(game_id):
             admin_cut = int(total_pot * 0.3)  # ۳۰٪ به ادمین
             winner_prize = total_pot - admin_cut  # ۷۰٪ به برنده
             
-            # ثبت سود ادمین
+            # ثبت سود ادمین در دیتابیس (بدون نمایش به کاربر)
             if admin_cut > 0:
                 conn = get_db()
                 c = conn.cursor()
@@ -1069,7 +1069,7 @@ def run_game(game_id):
                     try:
                         bot.send_message(
                             pid, 
-                            msg_fancy(f"😞 بازی تموم شد! برنده: {winner_name}\n💰 جایزه کل: {total_pot:,} تومان\n💼 سود ادمین: {admin_cut:,} تومان\n🍀 دفعه بعد شانس توئه!"), 
+                            msg_fancy(f"😞 بازی تموم شد! برنده: {winner_name}\n💰 جایزه کل: {total_pot:,} تومان\n🍀 دفعه بعد شانس توئه!"), 
                             parse_mode="HTML"
                         )
                     except:
@@ -1087,7 +1087,7 @@ def run_game(game_id):
                 
                 leveled, new_level, level_title, reward = add_xp(winner_id, room["xp"])
                 
-                winner_msg = f"🏆 **تبریک! برنده شدی!** 🏆\n\n👑 {winner_name} 👑\n\n💰 **جایزه:** {winner_prize:,} تومان\n💼 **سود ادمین:** {admin_cut:,} تومان\n✨ **XP کسب شده:** {room['xp']}"
+                winner_msg = f"🏆 **تبریک! برنده شدی!** 🏆\n\n👑 {winner_name} 👑\n\n💰 **جایزه:** {winner_prize:,} تومان\n✨ **XP کسب شده:** {room['xp']}"
                 
                 if leveled:
                     winner_msg += f"\n\n🌟 به سطح **{level_title}** رسیدی! {reward:,} تومان پاداش 🌟"
@@ -1379,7 +1379,6 @@ def run_rps_game(game_id):
             for pid in game["players"]:
                 if not game["players"][pid].get("is_bot", False):
                     update_wallet(pid, game["amount"])
-            # در حالت مساوی، سودی به ادمین نمی‌رسد
             del rps_games[game_id]
             return
         
@@ -1402,7 +1401,7 @@ def run_rps_game(game_id):
         admin_cut = int(total_pot * 0.1)  # ۱۰٪ به ادمین
         winner_prize = total_pot - admin_cut  # ۹۰٪ به برنده
         
-        # ثبت سود ادمین
+        # ثبت سود ادمین در دیتابیس (بدون نمایش به کاربر)
         if admin_cut > 0:
             conn = get_db()
             c = conn.cursor()
@@ -1418,7 +1417,7 @@ def run_rps_game(game_id):
                 try:
                     bot.send_message(
                         pid,
-                        msg_fancy(f"😞 بازی تموم شد! برنده: {game['players'][winner_id]['name']}\n💰 جایزه کل: {total_pot:,} تومان\n💼 سود ادمین: {admin_cut:,} تومان\n🍀 دفعه بعد شانس توئه!"),
+                        msg_fancy(f"😞 بازی تموم شد! برنده: {game['players'][winner_id]['name']}\n💰 جایزه کل: {total_pot:,} تومان\n🍀 دفعه بعد شانس توئه!"),
                         parse_mode="HTML"
                     )
                 except:
@@ -1448,9 +1447,7 @@ def run_rps_game(game_id):
 👤 {game['players'][p1]['name']}: {emojis.get(choice1, choice1)}
 👤 {game['players'][p2]['name']}: {emojis.get(choice2, choice2)}
 
-{result_text}
-
-💼 **سود ادمین:** {admin_cut:,} تومان"""
+{result_text}"""
                 
                 if winner_id == pid and not is_bot_winner:
                     result_msg += f"\n\n🎉 تبریک! {winner_prize:,} تومان بردی! 🎉"
@@ -1464,6 +1461,21 @@ def run_rps_game(game_id):
                 except:
                     pass
         
+        del rps_games[game_id]
+    
+    else:
+        # زمان انتخاب به پایان رسید
+        for pid in game["players"]:
+            if not game["players"][pid].get("is_bot", False):
+                update_wallet(pid, game["amount"])
+                try:
+                    bot.send_message(
+                        pid,
+                        msg_fancy(f"⏰ زمان انتخاب به پایان رسید! مبلغ {game['amount']:,} تومان به کیف پولت برگشت."),
+                        parse_mode="HTML"
+                    )
+                except:
+                    pass
         del rps_games[game_id]
     
     else:
