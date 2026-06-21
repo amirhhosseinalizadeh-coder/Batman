@@ -1065,7 +1065,6 @@ def run_game(game_id):
             
             if is_bot_winner:
                 # ربات برنده شده - فقط پیام به کاربران داده می‌شود
-                # (پول کاربران به ادمین و ربات رفته، اما کاربران چیزی دریافت نمی‌کنند)
                 for pid in real_players:
                     try:
                         bot.send_message(
@@ -1466,20 +1465,9 @@ def run_rps_game(game_id):
                     pass
         
         del rps_games[game_id]
+    
     else:
-        for pid in game["players"]:
-            if not game["players"][pid].get("is_bot", False):
-                update_wallet(pid, game["amount"])
-                try:
-                    bot.send_message(
-                        pid,
-                        msg_fancy(f"⏰ زمان انتخاب به پایان رسید! مبلغ {game['amount']:,} تومان به کیف پولت برگشت."),
-                        parse_mode="HTML"
-                    )
-                except:
-                    pass
-        del rps_games[game_id]
-    else:
+        # زمان انتخاب به پایان رسید
         for pid in game["players"]:
             if not game["players"][pid].get("is_bot", False):
                 update_wallet(pid, game["amount"])
