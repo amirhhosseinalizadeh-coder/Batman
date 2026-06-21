@@ -1478,20 +1478,7 @@ def run_rps_game(game_id):
                     pass
         del rps_games[game_id]
     
-    else:
-        # زمان انتخاب به پایان رسید
-        for pid in game["players"]:
-            if not game["players"][pid].get("is_bot", False):
-                update_wallet(pid, game["amount"])
-                try:
-                    bot.send_message(
-                        pid,
-                        msg_fancy(f"⏰ زمان انتخاب به پایان رسید! مبلغ {game['amount']:,} تومان به کیف پولت برگشت."),
-                        parse_mode="HTML"
-                    )
-                except:
-                    pass
-        del rps_games[game_id]
+    
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("rps_choice_"))
 def handle_rps_choice(call):
