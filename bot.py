@@ -279,11 +279,180 @@ def init_db():
             c.execute('INSERT INTO level_rewards (level, title, xp_needed, reward) VALUES (%s,%s,%s,%s) ON CONFLICT (level) DO NOTHING', lvl)
         
         c.execute("INSERT INTO bot_settings (key, value) VALUES ('bot_enabled', 'true') ON CONFLICT (key) DO NOTHING")
+def init_db():
+    conn = get_db()
+    c = conn.cursor()
+    
+    if DATABASE_URL:
+        # ===== PostgreSQL (برای Supabase) =====
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id TEXT PRIMARY KEY,
+                name TEXT,
+                wallet BIGINT DEFAULT 0,
+                total_earnings BIGINT DEFAULT 0,
+                xp BIGINT DEFAULT 0,
+                level INTEGER DEFAULT 1,
+                games INTEGER DEFAULT 0,
+                wins INTEGER DEFAULT 0,
+                losses INTEGER DEFAULT 0
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS invites (
+                user_id TEXT PRIMARY KEY,
+                code TEXT UNIQUE,
+                invited_count INTEGER DEFAULT 0,
+                rewarded INTEGER DEFAULT 0
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS invited_users (
+                inviter_id TEXT,
+                invited_id TEXT,
+                PRIMARY KEY (inviter_id, invited_id)
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS admins (
+                user_id TEXT PRIMARY KEY,
+                nickname TEXT,
+                can_add_admin INTEGER DEFAULT 0,
+                can_remove_admin INTEGER DEFAULT 0,
+                can_set_access INTEGER DEFAULT 0,
+                can_reset_bot INTEGER DEFAULT 0,
+                can_gift_cash INTEGER DEFAULT 0,
+                can_deposit_user INTEGER DEFAULT 0,
+                can_view_requests INTEGER DEFAULT 1,
+                can_change_shift INTEGER DEFAULT 1
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS shift_stats (
+                id SERIAL PRIMARY KEY,
+                admin_id TEXT,
+                nickname TEXT,
+                start_time REAL,
+                deposits BIGINT DEFAULT 0,
+                withdrawals BIGINT DEFAULT 0,
+                profits BIGINT DEFAULT 0
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS pending_deposits (
+                request_id TEXT PRIMARY KEY,
+                user_id TEXT,
+                user_name TEXT,
+                amount INTEGER,
+                message_id INTEGER,
+                photo_id TEXT
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS pending_withdrawals (
+                request_id TEXT PRIMARY KEY,
+                user_id TEXT,
+                user_name TEXT,
+                amount INTEGER,
+                card_number TEXT,
+                full_name TEXT
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS admin_earnings (
+                id SERIAL PRIMARY KEY,
+                date TEXT,
+                amount INTEGER,
+                withdrawn INTEGER DEFAULT 0
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS tickets (
+                ticket_id TEXT PRIMARY KEY,
+                user_id TEXT,
+                user_name TEXT,
+                message TEXT,
+                status TEXT DEFAULT 'open',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS active_games (
+                game_id TEXT PRIMARY KEY,
+                data TEXT
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS level_rewards (
+                level INTEGER PRIMARY KEY,
+                title TEXT,
+                xp_needed INTEGER,
+                reward INTEGER
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS welcome_bonus (
+                user_id TEXT PRIMARY KEY,
+                received INTEGER DEFAULT 0,
+                join_order INTEGER
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS bonus_stats (
+                key TEXT PRIMARY KEY,
+                value INTEGER DEFAULT 0
+            )
+        ''')
+        
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS bot_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        ''')
+        
+        # ===== اطلاعات اولیه =====
+        c.execute("INSERT INTO bonus_stats (key, value) VALUES ('total_bonus_given', 0) ON CONFLICT (key) DO NOTHING")
+        
+        levels = [
+            (1, "🌱 تازه‌کار", 0, 0),
+            (2, "🌟 ستاره نوظهور", 100, 5000),
+            (3, "⚡ جنگجوی بازار", 250, 10000),
+            (4, "🎯 تیرانداز دقیق", 500, 20000),
+            (5, "🏅 برنزی", 800, 35000),
+            (6, "🥈 نقره‌ای", 1200, 50000),
+            (7, "🥇 طلایی", 1700, 75000),
+            (8, "💎 پلاتینیوم", 2300, 100000),
+            (9, "👑 سلطان بازار", 3000, 150000),
+            (10, "🌈 افسانه‌ای", 4000, 200000)
+        ]
+        for lvl in levels:
+            c.execute('INSERT INTO level_rewards (level, title, xp_needed, reward) VALUES (%s,%s,%s,%s) ON CONFLICT (level) DO NOTHING', lvl)
+        
+        c.execute("INSERT INTO bot_settings (key, value) VALUES ('bot_enabled', 'true') ON CONFLICT (key) DO NOTHING")
         c.execute("INSERT INTO bot_settings (key, value) VALUES ('bot_win_rate', '30') ON CONFLICT (key) DO NOTHING")
         c.execute("INSERT INTO bot_settings (key, value) VALUES ('bot_timeout', '30') ON CONFLICT (key) DO NOTHING")
         c.execute("INSERT INTO bot_settings (key, value) VALUES ('max_bots', '5') ON CONFLICT (key) DO NOTHING")
         
-        MAIN_ADMIN_ID = '7281938958'
         c.execute('''
             INSERT INTO admins (user_id, nickname, can_add_admin, can_remove_admin, can_set_access, can_reset_bot, can_gift_cash, can_deposit_user)
             VALUES (%s, %s, 1, 1, 1, 1, 1, 1) ON CONFLICT (user_id) DO NOTHING
@@ -324,7 +493,6 @@ def init_db():
         c.execute('INSERT OR IGNORE INTO bot_settings (key, value) VALUES (?, ?)', ('bot_timeout', '30'))
         c.execute('INSERT OR IGNORE INTO bot_settings (key, value) VALUES (?, ?)', ('max_bots', '5'))
         
-        MAIN_ADMIN_ID = '7281938958'
         c.execute('INSERT OR IGNORE INTO admins (user_id, nickname, can_add_admin, can_remove_admin, can_set_access, can_reset_bot, can_gift_cash, can_deposit_user) VALUES (?, ?, 1, 1, 1, 1, 1, 1)', (MAIN_ADMIN_ID, '🧙‍♂️ مدیر ارشد 🧙‍♂️'))
         c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', ('current_card', '6219861075600832'))
         
