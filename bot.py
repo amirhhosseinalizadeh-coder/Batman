@@ -2924,7 +2924,7 @@ def update_shift_card(message):
         
         c.execute('''INSERT INTO shift_stats 
                     (admin_id, nickname, start_time, deposits, withdrawals, profits) 
-                    VALUES (%s, %s, %s, 0, 0, 0)''', 
+                    VALUES (%s, %s, %s, 0, 0, 0)''',
                   (str(message.from_user.id), admin_nick, time.time()))
         
         conn.commit()
