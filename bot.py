@@ -9,7 +9,7 @@ import sqlite3
 import re
 
 # ==================== تنظیمات اولیه ====================
-BOT_TOKEN = '8647710024:AAHoM2B-DxMWD9PI3y3jfS-IcnvYcUM2yX8'
+BOT_TOKEN = '8647710024:AAFjd7WDcVpF0Rpk1iuP-iw1K2MPRiNYjPQ'
 bot = telebot.TeleBot(BOT_TOKEN)
 BOT_USERNAME = 'lotto_ir_bot'
 MAIN_ADMIN_ID = '7281938958'
@@ -298,7 +298,7 @@ def get_leaderboard():
     return r
 # ==================== هدیه ورود (۱۰۰ نفر اول) ====================
 WELCOME_BONUS_AMOUNT = 30000
-MAX_BONUS_USERS = 100
+MAX_BONUS_USERS = 74
 
 def get_total_bonus_given():
     conn = get_db()
