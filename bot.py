@@ -378,7 +378,7 @@ def get_leaderboard():
 
 # ==================== هدیه ورود (۱۰۰ نفر اول) ====================
 WELCOME_BONUS_AMOUNT = 30000
-MAX_BONUS_USERS = 56
+MAX_BONUS_USERS = 70
 
 def get_total_bonus_given():
     conn = get_db()
