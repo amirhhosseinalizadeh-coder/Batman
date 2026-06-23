@@ -31,258 +31,6 @@ def init_db():
     conn = get_db()
     c = conn.cursor()
     
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            user_id TEXT PRIMARY KEY,
-            name TEXT,
-            wallet INTEGER DEFAULT 0,
-            total_earnings INTEGER DEFAULT 0,
-            xp INTEGER DEFAULT 0,
-            level INTEGER DEFAULT 1,
-            games INTEGER DEFAULT 0,
-            wins INTEGER DEFAULT 0,
-            losses INTEGER DEFAULT 0
-        )
-    ''')
-    
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS invites (
-            user_id TEXT PRIMARY KEY,
-            code TEXT UNIQUE,
-            invited_count INTEGER DEFAULT 0,
-            rewarded INTEGER DEFAULT 0
-        )
-    ''')
-    
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS invited_users (
-            inviter_id TEXT,
-            invited_id TEXT,
-            PRIMARY KEY (inviter_id, invited_id)
-        )
-    ''')
-    
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS admins (
-            user_id TEXT PRIMARY KEY,
-            nickname TEXT,
-            can_add_admin INTEGER DEFAULT 0,
-            can_remove_admin INTEGER DEFAULT 0,
-            can_set_access INTEGER DEFAULT 0,
-            can_reset_bot INTEGER DEFAULT 0,
-            can_gift_cash INTEGER DEFAULT 0,
-            can_deposit_user INTEGER DEFAULT 0,
-            can_view_requests INTEGER DEFAULT 1,
-            can_change_shift INTEGER DEFAULT 1
-        )
-    ''')
-    
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS shift_stats (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            admin_id TEXT,
-            nickname TEXT,
-            start_time REAL,
-            deposits INTEGER DEFAULT 0,
-            withdrawals INTEGER DEFAULT 0,
-            profits INTEGER DEFAULT 0
-        )
-    ''')
-    
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS settings (
-            key TEXT PRIMARY KEY,
-            value TEXT
-        )
-    ''')
-    
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS pending_deposits (
-            request_id TEXT PRIMARY KEY,
-            user_id TEXT,
-            user_name TEXT,
-            amount INTEGER,
-            message_id INTEGER,
-            photo_id TEXT
-        )
-    ''')
-    
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS pending_withdrawals (
-def init_db():
-    conn = get_db()
-    c = conn.cursor()
-    
-    if DATABASE_URL:
-        # ===== PostgreSQL (برای Supabase) =====
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                user_id TEXT PRIMARY KEY,
-                name TEXT,
-                wallet BIGINT DEFAULT 0,
-                total_earnings BIGINT DEFAULT 0,
-                xp BIGINT DEFAULT 0,
-                level INTEGER DEFAULT 1,
-                games INTEGER DEFAULT 0,
-                wins INTEGER DEFAULT 0,
-                losses INTEGER DEFAULT 0
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS invites (
-                user_id TEXT PRIMARY KEY,
-                code TEXT UNIQUE,
-                invited_count INTEGER DEFAULT 0,
-                rewarded INTEGER DEFAULT 0
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS invited_users (
-                inviter_id TEXT,
-                invited_id TEXT,
-                PRIMARY KEY (inviter_id, invited_id)
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS admins (
-                user_id TEXT PRIMARY KEY,
-                nickname TEXT,
-                can_add_admin INTEGER DEFAULT 0,
-                can_remove_admin INTEGER DEFAULT 0,
-                can_set_access INTEGER DEFAULT 0,
-                can_reset_bot INTEGER DEFAULT 0,
-                can_gift_cash INTEGER DEFAULT 0,
-                can_deposit_user INTEGER DEFAULT 0,
-                can_view_requests INTEGER DEFAULT 1,
-                can_change_shift INTEGER DEFAULT 1
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS shift_stats (
-                id SERIAL PRIMARY KEY,
-                admin_id TEXT,
-                nickname TEXT,
-                start_time REAL,
-                deposits BIGINT DEFAULT 0,
-                withdrawals BIGINT DEFAULT 0,
-                profits BIGINT DEFAULT 0
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS settings (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS pending_deposits (
-                request_id TEXT PRIMARY KEY,
-                user_id TEXT,
-                user_name TEXT,
-                amount INTEGER,
-                message_id INTEGER,
-                photo_id TEXT
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS pending_withdrawals (
-                request_id TEXT PRIMARY KEY,
-                user_id TEXT,
-                user_name TEXT,
-                amount INTEGER,
-                card_number TEXT,
-                full_name TEXT
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS admin_earnings (
-                id SERIAL PRIMARY KEY,
-                date TEXT,
-                amount INTEGER,
-                withdrawn INTEGER DEFAULT 0
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS tickets (
-                ticket_id TEXT PRIMARY KEY,
-                user_id TEXT,
-                user_name TEXT,
-                message TEXT,
-                status TEXT DEFAULT 'open',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS active_games (
-                game_id TEXT PRIMARY KEY,
-                data TEXT
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS level_rewards (
-                level INTEGER PRIMARY KEY,
-                title TEXT,
-                xp_needed INTEGER,
-                reward INTEGER
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS welcome_bonus (
-                user_id TEXT PRIMARY KEY,
-                received INTEGER DEFAULT 0,
-                join_order INTEGER
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS bonus_stats (
-                key TEXT PRIMARY KEY,
-                value INTEGER DEFAULT 0
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS bot_settings (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            )
-        ''')
-        
-        # ===== اطلاعات اولیه =====
-        c.execute("INSERT INTO bonus_stats (key, value) VALUES ('total_bonus_given', 0) ON CONFLICT (key) DO NOTHING")
-        
-        levels = [
-            (1, "🌱 تازه‌کار", 0, 0),
-            (2, "🌟 ستاره نوظهور", 100, 5000),
-            (3, "⚡ جنگجوی بازار", 250, 10000),
-            (4, "🎯 تیرانداز دقیق", 500, 20000),
-            (5, "🏅 برنزی", 800, 35000),
-            (6, "🥈 نقره‌ای", 1200, 50000),
-            (7, "🥇 طلایی", 1700, 75000),
-            (8, "💎 پلاتینیوم", 2300, 100000),
-            (9, "👑 سلطان بازار", 3000, 150000),
-            (10, "🌈 افسانه‌ای", 4000, 200000)
-        ]
-        for lvl in levels:
-            c.execute('INSERT INTO level_rewards (level, title, xp_needed, reward) VALUES (%s,%s,%s,%s) ON CONFLICT (level) DO NOTHING', lvl)
-        
-        c.execute("INSERT INTO bot_settings (key, value) VALUES ('bot_enabled', 'true') ON CONFLICT (key) DO NOTHING")
-def init_db():
-    conn = get_db()
-    c = conn.cursor()
-    
     if DATABASE_URL:
         # ===== PostgreSQL (برای Supabase) =====
         c.execute('''
@@ -504,13 +252,17 @@ def init_db():
     conn.commit()
     conn.close()
     print("✅ دیتابیس راه‌اندازی شد!")
+
 init_db()
 
 # ==================== توابع دیتابیس ====================
 def get_user_data(user_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT * FROM users WHERE user_id = ?', (str(user_id),))
+    if DATABASE_URL:
+        c.execute('SELECT * FROM users WHERE user_id = %s', (str(user_id),))
+    else:
+        c.execute('SELECT * FROM users WHERE user_id = ?', (str(user_id),))
     r = c.fetchone()
     conn.close()
     if r:
@@ -530,21 +282,30 @@ def get_user_data(user_id):
 def create_user(user_id, name):
     conn = get_db()
     c = conn.cursor()
-    c.execute('INSERT OR IGNORE INTO users (user_id, name) VALUES (?, ?)', (str(user_id), name))
+    if DATABASE_URL:
+        c.execute('INSERT INTO users (user_id, name) VALUES (%s, %s) ON CONFLICT (user_id) DO NOTHING', (str(user_id), name))
+    else:
+        c.execute('INSERT OR IGNORE INTO users (user_id, name) VALUES (?, ?)', (str(user_id), name))
     conn.commit()
     conn.close()
 
 def update_wallet(user_id, amount):
     conn = get_db()
     c = conn.cursor()
-    c.execute('UPDATE users SET wallet = wallet + ? WHERE user_id = ?', (amount, str(user_id)))
+    if DATABASE_URL:
+        c.execute('UPDATE users SET wallet = wallet + %s WHERE user_id = %s', (amount, str(user_id)))
+    else:
+        c.execute('UPDATE users SET wallet = wallet + ? WHERE user_id = ?', (amount, str(user_id)))
     conn.commit()
     conn.close()
 
 def get_wallet(user_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT wallet FROM users WHERE user_id = ?', (str(user_id),))
+    if DATABASE_URL:
+        c.execute('SELECT wallet FROM users WHERE user_id = %s', (str(user_id),))
+    else:
+        c.execute('SELECT wallet FROM users WHERE user_id = ?', (str(user_id),))
     r = c.fetchone()
     conn.close()
     return r[0] if r else 0
@@ -552,38 +313,57 @@ def get_wallet(user_id):
 def update_stats(user_id, games=0, wins=0, losses=0):
     conn = get_db()
     c = conn.cursor()
-    c.execute('UPDATE users SET games = games + ?, wins = wins + ?, losses = losses + ? WHERE user_id = ?', 
-              (games, wins, losses, str(user_id)))
+    if DATABASE_URL:
+        c.execute('UPDATE users SET games = games + %s, wins = wins + %s, losses = losses + %s WHERE user_id = %s', 
+                  (games, wins, losses, str(user_id)))
+    else:
+        c.execute('UPDATE users SET games = games + ?, wins = wins + ?, losses = losses + ? WHERE user_id = ?', 
+                  (games, wins, losses, str(user_id)))
     conn.commit()
     conn.close()
 
 def update_earnings(user_id, amount):
     conn = get_db()
     c = conn.cursor()
-    c.execute('UPDATE users SET total_earnings = total_earnings + ? WHERE user_id = ?', (amount, str(user_id)))
+    if DATABASE_URL:
+        c.execute('UPDATE users SET total_earnings = total_earnings + %s WHERE user_id = %s', (amount, str(user_id)))
+    else:
+        c.execute('UPDATE users SET total_earnings = total_earnings + ? WHERE user_id = ?', (amount, str(user_id)))
     conn.commit()
     conn.close()
 
 def add_xp(user_id, amount):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT xp, level FROM users WHERE user_id = ?', (str(user_id),))
+    if DATABASE_URL:
+        c.execute('SELECT xp, level FROM users WHERE user_id = %s', (str(user_id),))
+    else:
+        c.execute('SELECT xp, level FROM users WHERE user_id = ?', (str(user_id),))
     r = c.fetchone()
     if r:
         old_xp, old_level = r[0], r[1]
         new_xp = old_xp + amount
-        c.execute('SELECT level, title, reward FROM level_rewards WHERE xp_needed <= ? ORDER BY level DESC LIMIT 1', (new_xp,))
+        if DATABASE_URL:
+            c.execute('SELECT level, title, reward FROM level_rewards WHERE xp_needed <= %s ORDER BY level DESC LIMIT 1', (new_xp,))
+        else:
+            c.execute('SELECT level, title, reward FROM level_rewards WHERE xp_needed <= ? ORDER BY level DESC LIMIT 1', (new_xp,))
         lvl_data = c.fetchone()
         if lvl_data:
             new_level, level_title, reward = lvl_data
-            c.execute('UPDATE users SET xp = ?, level = ? WHERE user_id = ?', (new_xp, new_level, str(user_id)))
+            if DATABASE_URL:
+                c.execute('UPDATE users SET xp = %s, level = %s WHERE user_id = %s', (new_xp, new_level, str(user_id)))
+            else:
+                c.execute('UPDATE users SET xp = ?, level = ? WHERE user_id = ?', (new_xp, new_level, str(user_id)))
             conn.commit()
             if new_level > old_level:
                 update_wallet(user_id, reward)
                 conn.close()
                 return True, new_level, level_title, reward
         else:
-            c.execute('UPDATE users SET xp = ? WHERE user_id = ?', (new_xp, str(user_id)))
+            if DATABASE_URL:
+                c.execute('UPDATE users SET xp = %s WHERE user_id = %s', (new_xp, str(user_id)))
+            else:
+                c.execute('UPDATE users SET xp = ? WHERE user_id = ?', (new_xp, str(user_id)))
             conn.commit()
     conn.close()
     return False, None, None, None
@@ -595,6 +375,7 @@ def get_leaderboard():
     r = c.fetchall()
     conn.close()
     return r
+
 # ==================== هدیه ورود (۱۰۰ نفر اول) ====================
 WELCOME_BONUS_AMOUNT = 30000
 MAX_BONUS_USERS = 100
@@ -602,7 +383,10 @@ MAX_BONUS_USERS = 100
 def get_total_bonus_given():
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT value FROM bonus_stats WHERE key = "total_bonus_given"')
+    if DATABASE_URL:
+        c.execute('SELECT value FROM bonus_stats WHERE key = %s', ('total_bonus_given',))
+    else:
+        c.execute('SELECT value FROM bonus_stats WHERE key = "total_bonus_given"')
     r = c.fetchone()
     conn.close()
     return r[0] if r else 0
@@ -610,14 +394,20 @@ def get_total_bonus_given():
 def increase_bonus_count():
     conn = get_db()
     c = conn.cursor()
-    c.execute('UPDATE bonus_stats SET value = value + 1 WHERE key = "total_bonus_given"')
+    if DATABASE_URL:
+        c.execute('UPDATE bonus_stats SET value = value + 1 WHERE key = %s', ('total_bonus_given',))
+    else:
+        c.execute('UPDATE bonus_stats SET value = value + 1 WHERE key = "total_bonus_given"')
     conn.commit()
     conn.close()
 
 def has_received_welcome_bonus(user_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT received FROM welcome_bonus WHERE user_id = ?', (str(user_id),))
+    if DATABASE_URL:
+        c.execute('SELECT received FROM welcome_bonus WHERE user_id = %s', (str(user_id),))
+    else:
+        c.execute('SELECT received FROM welcome_bonus WHERE user_id = ?', (str(user_id),))
     r = c.fetchone()
     conn.close()
     return r and r[0] == 1
@@ -628,7 +418,11 @@ def set_welcome_bonus_received(user_id):
     
     conn = get_db()
     c = conn.cursor()
-    c.execute('INSERT OR REPLACE INTO welcome_bonus (user_id, received, join_order) VALUES (?, 1, ?)', (str(user_id), join_order))
+    if DATABASE_URL:
+        c.execute('INSERT INTO welcome_bonus (user_id, received, join_order) VALUES (%s, 1, %s) ON CONFLICT (user_id) DO UPDATE SET received = 1, join_order = %s', 
+                  (str(user_id), join_order, join_order))
+    else:
+        c.execute('INSERT OR REPLACE INTO welcome_bonus (user_id, received, join_order) VALUES (?, 1, ?)', (str(user_id), join_order))
     conn.commit()
     conn.close()
     increase_bonus_count()
@@ -649,10 +443,14 @@ def give_welcome_bonus(user_id):
     update_wallet(user_id, WELCOME_BONUS_AMOUNT)
     set_welcome_bonus_received(user_id)
     return True, remaining - 1
+
 def get_level_title(level):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT title FROM level_rewards WHERE level = ?', (level,))
+    if DATABASE_URL:
+        c.execute('SELECT title FROM level_rewards WHERE level = %s', (level,))
+    else:
+        c.execute('SELECT title FROM level_rewards WHERE level = ?', (level,))
     r = c.fetchone()
     conn.close()
     return r[0] if r else f"سطح {level}"
@@ -660,7 +458,10 @@ def get_level_title(level):
 def get_invite_code(user_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT code FROM invites WHERE user_id = ?', (str(user_id),))
+    if DATABASE_URL:
+        c.execute('SELECT code FROM invites WHERE user_id = %s', (str(user_id),))
+    else:
+        c.execute('SELECT code FROM invites WHERE user_id = ?', (str(user_id),))
     r = c.fetchone()
     conn.close()
     return r[0] if r else None
@@ -669,7 +470,10 @@ def create_invite(user_id):
     code = hashlib.md5(str(user_id).encode()).hexdigest()[:10]
     conn = get_db()
     c = conn.cursor()
-    c.execute('INSERT OR IGNORE INTO invites (user_id, code) VALUES (?, ?)', (str(user_id), code))
+    if DATABASE_URL:
+        c.execute('INSERT INTO invites (user_id, code) VALUES (%s, %s) ON CONFLICT (user_id) DO NOTHING', (str(user_id), code))
+    else:
+        c.execute('INSERT OR IGNORE INTO invites (user_id, code) VALUES (?, ?)', (str(user_id), code))
     conn.commit()
     conn.close()
     return code
@@ -677,7 +481,10 @@ def create_invite(user_id):
 def get_invited_count(user_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT invited_count FROM invites WHERE user_id = ?', (str(user_id),))
+    if DATABASE_URL:
+        c.execute('SELECT invited_count FROM invites WHERE user_id = %s', (str(user_id),))
+    else:
+        c.execute('SELECT invited_count FROM invites WHERE user_id = ?', (str(user_id),))
     r = c.fetchone()
     conn.close()
     return r[0] if r else 0
@@ -685,14 +492,20 @@ def get_invited_count(user_id):
 def add_invited(user_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute('UPDATE invites SET invited_count = invited_count + 1 WHERE user_id = ?', (str(user_id),))
+    if DATABASE_URL:
+        c.execute('UPDATE invites SET invited_count = invited_count + 1 WHERE user_id = %s', (str(user_id),))
+    else:
+        c.execute('UPDATE invites SET invited_count = invited_count + 1 WHERE user_id = ?', (str(user_id),))
     conn.commit()
     conn.close()
 
 def is_rewarded(user_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT rewarded FROM invites WHERE user_id = ?', (str(user_id),))
+    if DATABASE_URL:
+        c.execute('SELECT rewarded FROM invites WHERE user_id = %s', (str(user_id),))
+    else:
+        c.execute('SELECT rewarded FROM invites WHERE user_id = ?', (str(user_id),))
     r = c.fetchone()
     conn.close()
     return r[0] == 1 if r else False
@@ -700,14 +513,20 @@ def is_rewarded(user_id):
 def set_rewarded(user_id):
     conn = get_db()
     c = conn.cursor()
-    c.execute('UPDATE invites SET rewarded = 1 WHERE user_id = ?', (str(user_id),))
+    if DATABASE_URL:
+        c.execute('UPDATE invites SET rewarded = 1 WHERE user_id = %s', (str(user_id),))
+    else:
+        c.execute('UPDATE invites SET rewarded = 1 WHERE user_id = ?', (str(user_id),))
     conn.commit()
     conn.close()
 
 def get_invite_by_code(code):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT user_id FROM invites WHERE code = ?', (code,))
+    if DATABASE_URL:
+        c.execute('SELECT user_id FROM invites WHERE code = %s', (code,))
+    else:
+        c.execute('SELECT user_id FROM invites WHERE code = ?', (code,))
     r = c.fetchone()
     conn.close()
     return r[0] if r else None
@@ -715,7 +534,10 @@ def get_invite_by_code(code):
 def is_admin(user_id, access_key=None):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT * FROM admins WHERE user_id = ?', (str(user_id),))
+    if DATABASE_URL:
+        c.execute('SELECT * FROM admins WHERE user_id = %s', (str(user_id),))
+    else:
+        c.execute('SELECT * FROM admins WHERE user_id = ?', (str(user_id),))
     r = c.fetchone()
     conn.close()
     if not r:
@@ -750,19 +572,29 @@ def get_admins():
 def get_current_card():
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT value FROM settings WHERE key = "current_card"')
+    if DATABASE_URL:
+        c.execute('SELECT value FROM settings WHERE key = %s', ('current_card',))
+    else:
+        c.execute('SELECT value FROM settings WHERE key = "current_card"')
     r = c.fetchone()
     conn.close()
-    return r[0] if r else "6104331089573068"
+    return r[0] if r else "6219861075600832"
 
 def update_shift_stats(deposits=0, withdrawals=0, profits=0):
     conn = get_db()
     c = conn.cursor()
-    c.execute('''
-        UPDATE shift_stats 
-        SET deposits = deposits + %s, withdrawals = withdrawals + %s, profits = profits + %s 
-        WHERE id = (SELECT id FROM shift_stats ORDER BY id DESC LIMIT 1)
-    ''', (deposits, withdrawals, profits))
+    if DATABASE_URL:
+        c.execute('''
+            UPDATE shift_stats 
+            SET deposits = deposits + %s, withdrawals = withdrawals + %s, profits = profits + %s 
+            WHERE id = (SELECT id FROM shift_stats ORDER BY id DESC LIMIT 1)
+        ''', (deposits, withdrawals, profits))
+    else:
+        c.execute('''
+            UPDATE shift_stats 
+            SET deposits = deposits + ?, withdrawals = withdrawals + ?, profits = profits + ? 
+            WHERE id = (SELECT id FROM shift_stats ORDER BY id DESC LIMIT 1)
+        ''', (deposits, withdrawals, profits))
     conn.commit()
     conn.close()
 
@@ -795,7 +627,10 @@ def get_current_shift():
 def is_bot_enabled():
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT value FROM bot_settings WHERE key = "bot_enabled"')
+    if DATABASE_URL:
+        c.execute('SELECT value FROM bot_settings WHERE key = %s', ('bot_enabled',))
+    else:
+        c.execute('SELECT value FROM bot_settings WHERE key = "bot_enabled"')
     r = c.fetchone()
     conn.close()
     return r and r[0] == 'true'
@@ -803,7 +638,10 @@ def is_bot_enabled():
 def get_bot_setting(key):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT value FROM bot_settings WHERE key = ?', (key,))
+    if DATABASE_URL:
+        c.execute('SELECT value FROM bot_settings WHERE key = %s', (key,))
+    else:
+        c.execute('SELECT value FROM bot_settings WHERE key = ?', (key,))
     r = c.fetchone()
     conn.close()
     return r[0] if r else None
@@ -961,7 +799,7 @@ def get_main_keyboard():
         KeyboardButton("👥 مشاهده صف انتظار 📊")
     )
     keyboard.add(
-        KeyboardButton("📖 راهنما و قوانین 📖")  # دکمه جدید
+        KeyboardButton("📖 راهنما و قوانین 📖")
     )
     return keyboard
 
@@ -970,6 +808,7 @@ def get_wallet_keyboard():
     keyboard.add(KeyboardButton("💸 واریز 📤"), KeyboardButton("💳 برداشت 📥"))
     keyboard.add(KeyboardButton("↩️ بازگشت 🏠"))
     return keyboard
+
 def get_admin_keyboard():
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     keyboard.add(
@@ -990,7 +829,7 @@ def get_admin_keyboard():
     )
     keyboard.add(
         KeyboardButton("🎫 تیکت‌ها 🎫"),
-        KeyboardButton("📢 پیام همگانی 📢")  # <---- این خط رو اضافه کن
+        KeyboardButton("📢 پیام همگانی 📢")
     )
     return keyboard
 
@@ -1073,7 +912,8 @@ pending_withdrawal_requests = {}
 support_chats = {}
 rps_waiting = {}
 rps_games = {}
-pending_broadcasts = {} 
+pending_broadcasts = {}
+
 # ==================== هندلر استارت ====================
 @bot.message_handler(commands=['start'])
 def start_handler(message):
@@ -1106,14 +946,20 @@ def start_handler(message):
         if inviter_id and inviter_id != user_id:
             conn = get_db()
             c = conn.cursor()
-            c.execute('SELECT * FROM invited_users WHERE inviter_id = ? AND invited_id = ?', (inviter_id, user_id))
+            if DATABASE_URL:
+                c.execute('SELECT * FROM invited_users WHERE inviter_id = %s AND invited_id = %s', (inviter_id, user_id))
+            else:
+                c.execute('SELECT * FROM invited_users WHERE inviter_id = ? AND invited_id = ?', (inviter_id, user_id))
             existing = c.fetchone()
             conn.close()
             
             if not existing:
                 conn = get_db()
                 c = conn.cursor()
-                c.execute('INSERT INTO invited_users (inviter_id, invited_id) VALUES (?, ?)', (inviter_id, user_id))
+                if DATABASE_URL:
+                    c.execute('INSERT INTO invited_users (inviter_id, invited_id) VALUES (%s, %s)', (inviter_id, user_id))
+                else:
+                    c.execute('INSERT INTO invited_users (inviter_id, invited_id) VALUES (?, ?)', (inviter_id, user_id))
                 conn.commit()
                 conn.close()
                 
@@ -1344,26 +1190,26 @@ def run_game(game_id):
             
             real_players = [pid for pid, pdata in game["players"].items() if not pdata.get("is_bot", False)]
             
-            # محاسبه کل پات (همه بازیکنان)
             total_players = len(game["players"])
             total_pot = total_players * room["amount"]
             
-            # ====== سود ادمین ۳۰٪ ======
-            admin_cut = int(total_pot * 0.3)  # ۳۰٪ به ادمین
-            winner_prize = total_pot - admin_cut  # ۷۰٪ به برنده
+            admin_cut = int(total_pot * 0.3)
+            winner_prize = total_pot - admin_cut
             
-            # ثبت سود ادمین در دیتابیس (بدون نمایش به کاربر)
             if admin_cut > 0:
                 conn = get_db()
                 c = conn.cursor()
-                c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
-                         (datetime.datetime.now().date().isoformat(), admin_cut))
+                if DATABASE_URL:
+                    c.execute('INSERT INTO admin_earnings (date, amount) VALUES (%s, %s)', 
+                             (datetime.datetime.now().date().isoformat(), admin_cut))
+                else:
+                    c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
+                             (datetime.datetime.now().date().isoformat(), admin_cut))
                 conn.commit()
                 conn.close()
                 update_shift_stats(profits=admin_cut)
             
             if is_bot_winner:
-                # ربات برنده شده - فقط پیام به کاربران داده می‌شود
                 for pid in real_players:
                     try:
                         bot.send_message(
@@ -1375,7 +1221,6 @@ def run_game(game_id):
                         pass
             
             else:
-                # کاربر برنده شده - جایزه به کاربر داده می‌شود
                 update_wallet(winner_id, winner_prize)
                 update_earnings(winner_id, winner_prize)
                 update_stats(winner_id, games=1, wins=1)
@@ -1692,26 +1537,26 @@ def run_rps_game(game_id):
         
         real_players = [pid for pid, pdata in game["players"].items() if not pdata.get("is_bot", False)]
         
-        # محاسبه کل پات (همه بازیکنان)
         total_players = len(game["players"])
         total_pot = total_players * game["amount"]
         
-        # ====== سود ادمین ۱۰٪ ======
-        admin_cut = int(total_pot * 0.1)  # ۱۰٪ به ادمین
-        winner_prize = total_pot - admin_cut  # ۹۰٪ به برنده
+        admin_cut = int(total_pot * 0.1)
+        winner_prize = total_pot - admin_cut
         
-        # ثبت سود ادمین در دیتابیس (بدون نمایش به کاربر)
         if admin_cut > 0:
             conn = get_db()
             c = conn.cursor()
-            c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
-                     (datetime.datetime.now().date().isoformat(), admin_cut))
+            if DATABASE_URL:
+                c.execute('INSERT INTO admin_earnings (date, amount) VALUES (%s, %s)', 
+                         (datetime.datetime.now().date().isoformat(), admin_cut))
+            else:
+                c.execute('INSERT INTO admin_earnings (date, amount) VALUES (?, ?)', 
+                         (datetime.datetime.now().date().isoformat(), admin_cut))
             conn.commit()
             conn.close()
             update_shift_stats(profits=admin_cut)
         
         if is_bot_winner and winner_id:
-            # ربات برنده شده - فقط پیام به کاربران داده می‌شود
             for pid in real_players:
                 try:
                     bot.send_message(
@@ -1723,7 +1568,6 @@ def run_rps_game(game_id):
                     pass
         
         elif winner_id and not is_bot_winner:
-            # کاربر برنده شده - جایزه به کاربر داده می‌شود
             update_wallet(winner_id, winner_prize)
             update_earnings(winner_id, winner_prize)
             update_stats(winner_id, games=1, wins=1)
@@ -1734,7 +1578,6 @@ def run_rps_game(game_id):
             
             add_xp(winner_id, game["xp_reward"])
         
-        # ارسال نتیجه به کاربرا
         for pid in game["players"]:
             if not game["players"][pid].get("is_bot", False):
                 emojis = {"سنگ": "✊", "کاغذ": "✋", "قیچی": "✌️"}
@@ -1763,7 +1606,6 @@ def run_rps_game(game_id):
         del rps_games[game_id]
     
     else:
-        # زمان انتخاب به پایان رسید
         for pid in game["players"]:
             if not game["players"][pid].get("is_bot", False):
                 update_wallet(pid, game["amount"])
@@ -1776,8 +1618,6 @@ def run_rps_game(game_id):
                 except:
                     pass
         del rps_games[game_id]
-    
-    
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("rps_choice_"))
 def handle_rps_choice(call):
@@ -1882,7 +1722,10 @@ def level_handler(message):
         level_title = get_level_title(user['level'])
         conn = get_db()
         c = conn.cursor()
-        c.execute('SELECT xp_needed FROM level_rewards WHERE level = ?', (user['level'] + 1,))
+        if DATABASE_URL:
+            c.execute('SELECT xp_needed FROM level_rewards WHERE level = %s', (user['level'] + 1,))
+        else:
+            c.execute('SELECT xp_needed FROM level_rewards WHERE level = ?', (user['level'] + 1,))
         next_lvl = c.fetchone()
         conn.close()
         
@@ -2255,6 +2098,7 @@ def about_handler(message):
 
 📞 پشتیبانی: از طریق دکمه پشتیبانی با ما در ارتباط باش"""
     bot.send_message(message.from_user.id, msg_fancy(text), parse_mode="HTML")
+
 @bot.message_handler(func=lambda message: message.text == "📖 راهنما و قوانین 📖")
 def help_button_handler(message):
     help_text = """🎰 راهنمای کامل بازی‌های سلطان لوتو 🎰
@@ -2331,6 +2175,7 @@ def help_button_handler(message):
         msg_fancy(help_text), 
         parse_mode="HTML"
     )
+
 # ==================== پشتیبانی ====================
 @bot.message_handler(func=lambda message: message.text == "🆘 پشتیبانی 🎫")
 def support_handler(message):
@@ -2347,10 +2192,12 @@ def create_ticket(message, user_id):
     
     conn = get_db()
     c = conn.cursor()
-    c.execute(
-        'INSERT INTO tickets (ticket_id, user_id, user_name, message) VALUES (?, ?, ?, ?)',
-        (ticket_id, user_id, message.from_user.first_name, message.text)
-    )
+    if DATABASE_URL:
+        c.execute('INSERT INTO tickets (ticket_id, user_id, user_name, message) VALUES (%s, %s, %s, %s)',
+                  (ticket_id, user_id, message.from_user.first_name, message.text))
+    else:
+        c.execute('INSERT INTO tickets (ticket_id, user_id, user_name, message) VALUES (?, ?, ?, ?)',
+                  (ticket_id, user_id, message.from_user.first_name, message.text))
     conn.commit()
     conn.close()
     
@@ -2394,7 +2241,10 @@ def handle_ticket_reply(message):
     
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT user_id FROM tickets WHERE ticket_id = ?', (ticket_id,))
+    if DATABASE_URL:
+        c.execute('SELECT user_id FROM tickets WHERE ticket_id = %s', (ticket_id,))
+    else:
+        c.execute('SELECT user_id FROM tickets WHERE ticket_id = ?', (ticket_id,))
     result = c.fetchone()
     conn.close()
     
@@ -2414,7 +2264,10 @@ def handle_ticket_reply(message):
         
         conn = get_db()
         c = conn.cursor()
-        c.execute('UPDATE tickets SET status = "closed" WHERE ticket_id = ?', (ticket_id,))
+        if DATABASE_URL:
+            c.execute('UPDATE tickets SET status = %s WHERE ticket_id = %s', ('closed', ticket_id))
+        else:
+            c.execute('UPDATE tickets SET status = "closed" WHERE ticket_id = ?', (ticket_id,))
         conn.commit()
         conn.close()
     
@@ -2566,7 +2419,10 @@ def admin_tickets(message):
     
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT ticket_id, user_name, message, status FROM tickets WHERE status = "open" ORDER BY created_at DESC')
+    if DATABASE_URL:
+        c.execute('SELECT ticket_id, user_name, message, status FROM tickets WHERE status = %s ORDER BY created_at DESC', ('open',))
+    else:
+        c.execute('SELECT ticket_id, user_name, message, status FROM tickets WHERE status = "open" ORDER BY created_at DESC')
     tickets = c.fetchall()
     conn.close()
     
@@ -2592,7 +2448,10 @@ def close_ticket(call):
     
     conn = get_db()
     c = conn.cursor()
-    c.execute('UPDATE tickets SET status = "closed" WHERE ticket_id = ?', (ticket_id,))
+    if DATABASE_URL:
+        c.execute('UPDATE tickets SET status = %s WHERE ticket_id = %s', ('closed', ticket_id))
+    else:
+        c.execute('UPDATE tickets SET status = "closed" WHERE ticket_id = ?', (ticket_id,))
     conn.commit()
     conn.close()
     
@@ -2741,7 +2600,10 @@ def add_admin_id(message):
         
         conn = get_db()
         c = conn.cursor()
-        c.execute('SELECT * FROM admins WHERE user_id = ?', (new_id,))
+        if DATABASE_URL:
+            c.execute('SELECT * FROM admins WHERE user_id = %s', (new_id,))
+        else:
+            c.execute('SELECT * FROM admins WHERE user_id = ?', (new_id,))
         if c.fetchone():
             bot.send_message(message.from_user.id, msg_fancy("🚫 این آیدی قبلاً ادمینه!"), parse_mode="HTML")
             conn.close()
@@ -2758,10 +2620,12 @@ def add_admin_nickname(message, new_id):
     
     conn = get_db()
     c = conn.cursor()
-    c.execute(
-        'INSERT INTO admins (user_id, nickname, can_view_requests, can_change_shift) VALUES (?, ?, 1, 1)',
-        (new_id, nickname)
-    )
+    if DATABASE_URL:
+        c.execute('INSERT INTO admins (user_id, nickname, can_view_requests, can_change_shift) VALUES (%s, %s, 1, 1)',
+                  (new_id, nickname))
+    else:
+        c.execute('INSERT INTO admins (user_id, nickname, can_view_requests, can_change_shift) VALUES (?, ?, 1, 1)',
+                  (new_id, nickname))
     conn.commit()
     conn.close()
     
@@ -2789,7 +2653,10 @@ def remove_admin_id(message):
         
         conn = get_db()
         c = conn.cursor()
-        c.execute('DELETE FROM admins WHERE user_id = ?', (remove_id,))
+        if DATABASE_URL:
+            c.execute('DELETE FROM admins WHERE user_id = %s', (remove_id,))
+        else:
+            c.execute('DELETE FROM admins WHERE user_id = ?', (remove_id,))
         conn.commit()
         conn.close()
         
@@ -2811,7 +2678,10 @@ def set_access_admin(message):
         
         conn = get_db()
         c = conn.cursor()
-        c.execute('SELECT * FROM admins WHERE user_id = ?', (admin_id,))
+        if DATABASE_URL:
+            c.execute('SELECT * FROM admins WHERE user_id = %s', (admin_id,))
+        else:
+            c.execute('SELECT * FROM admins WHERE user_id = ?', (admin_id,))
         if not c.fetchone():
             bot.send_message(message.from_user.id, msg_fancy("🚫 ادمین یافت نشد!"), parse_mode="HTML")
             conn.close()
@@ -2864,7 +2734,10 @@ def set_access_value(message, admin_id, key):
     
     conn = get_db()
     c = conn.cursor()
-    c.execute(f'UPDATE admins SET {col_map[key]} = ? WHERE user_id = ?', (int(value), admin_id))
+    if DATABASE_URL:
+        c.execute(f'UPDATE admins SET {col_map[key]} = %s WHERE user_id = %s', (int(value), admin_id))
+    else:
+        c.execute(f'UPDATE admins SET {col_map[key]} = ? WHERE user_id = ?', (int(value), admin_id))
     conn.commit()
     conn.close()
     
@@ -2914,18 +2787,30 @@ def update_shift_card(message):
     c = conn.cursor()
     
     try:
-        c.execute('UPDATE settings SET value = %s WHERE key = "current_card"', (card,))
+        if DATABASE_URL:
+            c.execute('UPDATE settings SET value = %s WHERE key = %s', (card, 'current_card'))
+        else:
+            c.execute('UPDATE settings SET value = ? WHERE key = "current_card"', (card,))
         
         admin_nick = "ادمین"
-        c.execute('SELECT nickname FROM admins WHERE user_id = %s', (str(message.from_user.id),))
+        if DATABASE_URL:
+            c.execute('SELECT nickname FROM admins WHERE user_id = %s', (str(message.from_user.id),))
+        else:
+            c.execute('SELECT nickname FROM admins WHERE user_id = ?', (str(message.from_user.id),))
         r = c.fetchone()
         if r:
             admin_nick = r[0]
         
-        c.execute('''INSERT INTO shift_stats 
-                    (admin_id, nickname, start_time, deposits, withdrawals, profits) 
-                    VALUES (%s, %s, %s, 0, 0, 0)''',
-                  (str(message.from_user.id), admin_nick, time.time()))
+        if DATABASE_URL:
+            c.execute('''INSERT INTO shift_stats 
+                        (admin_id, nickname, start_time, deposits, withdrawals, profits) 
+                        VALUES (%s, %s, %s, 0, 0, 0)''', 
+                      (str(message.from_user.id), admin_nick, time.time()))
+        else:
+            c.execute('''INSERT INTO shift_stats 
+                        (admin_id, nickname, start_time, deposits, withdrawals, profits) 
+                        VALUES (?, ?, ?, 0, 0, 0)''', 
+                      (str(message.from_user.id), admin_nick, time.time()))
         
         conn.commit()
         
@@ -2951,7 +2836,10 @@ def reset_bot(message):
     
     conn = get_db()
     c = conn.cursor()
-    c.execute('DELETE FROM users WHERE user_id != ?', (MAIN_ADMIN_ID,))
+    if DATABASE_URL:
+        c.execute('DELETE FROM users WHERE user_id != %s', (MAIN_ADMIN_ID,))
+    else:
+        c.execute('DELETE FROM users WHERE user_id != ?', (MAIN_ADMIN_ID,))
     c.execute('DELETE FROM invites')
     c.execute('DELETE FROM invited_users')
     c.execute('DELETE FROM pending_deposits')
@@ -3050,7 +2938,6 @@ def send_broadcast(message):
         reply_markup=markup
     )
 
-# ==================== Callback های پیام همگانی ====================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("confirm_broadcast_"))
 def confirm_broadcast(call):
     admin_id = call.data.split("_")[2]
@@ -3059,7 +2946,6 @@ def confirm_broadcast(call):
         bot.answer_callback_query(call.id, "🚫 این دکمه برای شما نیست!")
         return
     
-    # گرفتن متن پیام از دیکشنری موقت
     broadcast_text = pending_broadcasts.get(admin_id, "پیام همگانی")
     
     bot.edit_message_text(
@@ -3069,7 +2955,6 @@ def confirm_broadcast(call):
         parse_mode="HTML"
     )
     
-    # گرفتن لیست کاربران
     conn = get_db()
     c = conn.cursor()
     c.execute('SELECT user_id FROM users')
@@ -3079,7 +2964,6 @@ def confirm_broadcast(call):
     success_count = 0
     fail_count = 0
     
-    # ارسال به همه کاربران
     for user in users:
         user_id = user[0]
         try:
@@ -3087,15 +2971,11 @@ def confirm_broadcast(call):
             success_count += 1
         except:
             fail_count += 1
-        
-        # برای جلوگیری از محدودیت تلگرام، کمی تاخیر
         time.sleep(0.05)
     
-    # حذف از دیکشنری موقت
     if admin_id in pending_broadcasts:
         del pending_broadcasts[admin_id]
     
-    # گزارش نهایی
     result_text = f"""📊 **گزارش ارسال پیام همگانی:**
 
 ✅ **موفق:** {success_count} نفر
@@ -3116,7 +2996,6 @@ def confirm_broadcast(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == "cancel_broadcast")
 def cancel_broadcast(call):
-    # حذف از دیکشنری موقت
     admin_id = str(call.from_user.id)
     if admin_id in pending_broadcasts:
         del pending_broadcasts[admin_id]
@@ -3128,6 +3007,7 @@ def cancel_broadcast(call):
         parse_mode="HTML"
     )
     bot.answer_callback_query(call.id, "❌ لغو شد!")
+
 # ==================== اجرا ====================
 if __name__ == "__main__":
     print("""
