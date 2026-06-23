@@ -753,14 +753,14 @@ def get_current_card():
     c.execute('SELECT value FROM settings WHERE key = "current_card"')
     r = c.fetchone()
     conn.close()
-    return r[0] if r else "6219861075600832"
+    return r[0] if r else "6104331089573068"
 
 def update_shift_stats(deposits=0, withdrawals=0, profits=0):
     conn = get_db()
     c = conn.cursor()
     c.execute('''
         UPDATE shift_stats 
-        SET deposits = deposits + ?, withdrawals = withdrawals + ?, profits = profits + ? 
+        SET deposits = deposits + %s, withdrawals = withdrawals + %s, profits = profits + %s 
         WHERE id = (SELECT id FROM shift_stats ORDER BY id DESC LIMIT 1)
     ''', (deposits, withdrawals, profits))
     conn.commit()
@@ -2914,17 +2914,17 @@ def update_shift_card(message):
     c = conn.cursor()
     
     try:
-        c.execute('UPDATE settings SET value = ? WHERE key = "current_card"', (card,))
+        c.execute('UPDATE settings SET value = %s WHERE key = "current_card"', (card,))
         
         admin_nick = "ادمین"
-        c.execute('SELECT nickname FROM admins WHERE user_id = ?', (str(message.from_user.id),))
+        c.execute('SELECT nickname FROM admins WHERE user_id = %s', (str(message.from_user.id),))
         r = c.fetchone()
         if r:
             admin_nick = r[0]
         
         c.execute('''INSERT INTO shift_stats 
                     (admin_id, nickname, start_time, deposits, withdrawals, profits) 
-                    VALUES (?, ?, ?, 0, 0, 0)''', 
+                    VALUES (%s, %s, %s, 0, 0, 0)''', 
                   (str(message.from_user.id), admin_nick, time.time()))
         
         conn.commit()
